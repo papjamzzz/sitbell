@@ -5,6 +5,7 @@ import pathlib
 
 load_dotenv()
 app = Flask(__name__)
+app.config['TEMPLATES_AUTO_RELOAD'] = True
 
 SOUNDS_DIR = pathlib.Path.home() / "Desktop" / "timers change"
 AUDIO_EXTENSIONS = {'.wav', '.mp3', '.aif', '.aiff', '.flac', '.ogg', '.m4a'}

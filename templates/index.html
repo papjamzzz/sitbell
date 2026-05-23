@@ -2,114 +2,1278 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>sitbell</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="SitBell"/>
+  <meta name="theme-color" content="#08090d"/>
+  <title>SitBell</title>
+  <link rel="manifest" href="/static/manifest.json"/>
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg:      #08090d;
-      --surface: #0d0f1a;
-      --card:    #11131e;
-      --card2:   #151828;
-      --border:  #1e2235;
-      --muted:   #2a2f48;
-      --text:    #f0f2ff;
-      --dim:     #5a6080;
-      --accent:  #4fc3f7;
+      --bg:       #07080c;
+      --surface:  #0c0e18;
+      --card:     #10121d;
+      --card2:    #141620;
+      --border:   #1a1d2e;
+      --muted:    #252840;
+      --text:     #e8eaf6;
+      --dim:      #4a5070;
+      --dim2:     #323660;
+      --accent:   #c49a5e;
+      --accent2:  #a07840;
+      --accent3:  #7a5a2e;
+      --gold:     rgba(196,154,94,0.12);
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bot: env(safe-area-inset-bottom, 0px);
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      height: 100%;
+      overscroll-behavior: none;
+    }
 
     body {
       background: var(--bg);
       color: var(--text);
       font-family: 'Inter', -apple-system, sans-serif;
       min-height: 100vh;
+      min-height: -webkit-fill-available;
     }
 
-    ::-webkit-scrollbar { width: 5px; }
-    ::-webkit-scrollbar-track { background: var(--surface); }
-    ::-webkit-scrollbar-thumb { background: var(--muted); border-radius: 3px; }
+    /* ─── LAYOUT ─── */
+    .app {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
+      padding-top: var(--safe-top);
+      padding-bottom: var(--safe-bot);
+    }
 
-    /* ── HEADER ── */
+    /* ─── HEADER ─── */
     .header {
-      background: linear-gradient(180deg, #0e1020 0%, #08090d 100%);
-      border-bottom: 1px solid rgba(79,195,247,0.1);
-      padding: 13px 28px;
+      padding: 16px 20px 14px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      position: sticky;
-      top: 0;
-      z-index: 200;
-      backdrop-filter: blur(20px);
-    }
-    .header::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0; height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(79,195,247,0.6), transparent);
+      border-bottom: 1px solid var(--border);
     }
     .brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .brand img {
-      height: 30px;
-      border-radius: 6px;
-    }
-    .brand-name {
-      font-size: 17px;
+      font-size: 18px;
       font-weight: 800;
-      letter-spacing: -0.02em;
+      letter-spacing: -0.03em;
       color: var(--accent);
     }
+    .header-actions { display: flex; gap: 10px; }
+    .icon-btn {
+      width: 36px; height: 36px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; color: var(--dim); font-size: 17px;
+      transition: all 0.2s;
+    }
+    .icon-btn:active { transform: scale(0.93); background: var(--card2); }
+    .icon-btn.active { color: var(--accent); border-color: var(--accent3); background: var(--gold); }
 
-    /* ── MAIN ── */
-    .main {
-      max-width: 960px;
-      margin: 0 auto;
-      padding: 32px 24px;
+    /* ─── MAIN SCROLL ─── */
+    .main { flex: 1; overflow-y: auto; padding: 0 0 100px; }
+
+    /* ─── TIMER FACE ─── */
+    .timer-section {
+      padding: 32px 24px 24px;
+      text-align: center;
+    }
+    .timer-ring-wrap {
+      position: relative;
+      width: 220px; height: 220px;
+      margin: 0 auto 24px;
+    }
+    .timer-ring-wrap svg {
+      position: absolute; top: 0; left: 0;
+      transform: rotate(-90deg);
+    }
+    .ring-bg { fill: none; stroke: var(--border); stroke-width: 4; }
+    .ring-fill {
+      fill: none; stroke: var(--accent);
+      stroke-width: 4; stroke-linecap: round;
+      stroke-dasharray: 628;
+      stroke-dashoffset: 628;
+      transition: stroke-dashoffset 1s linear;
+    }
+    .timer-inner {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+    }
+    .timer-display {
+      font-size: 54px;
+      font-weight: 300;
+      letter-spacing: -0.03em;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+    .timer-display.running { color: var(--accent); }
+    .timer-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--dim);
+      margin-top: 6px;
     }
 
-    /* ── INFO BAR ── */
-    #info-bar {
+    /* interval dots */
+    .interval-dots {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 20px;
+      min-height: 12px;
+    }
+    .interval-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--muted);
+      transition: background 0.3s;
+    }
+    .interval-dot.passed { background: var(--accent2); }
+    .interval-dot.current { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+
+    /* ─── CONTROLS ─── */
+    .controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 8px;
+    }
+    .btn {
+      border: none; cursor: pointer; font-family: inherit;
+      transition: all 0.2s; user-select: none;
+    }
+    .btn-play {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #07080c;
+      font-size: 28px;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 32px rgba(196,154,94,0.3);
+    }
+    .btn-play:active { transform: scale(0.95); }
+    .btn-play.running { background: var(--accent2); }
+    .btn-secondary {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--dim);
+      font-size: 18px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .btn-secondary:active { transform: scale(0.93); }
+    .btn-secondary.visible { color: var(--text); }
+
+    /* ─── SECTION LABEL ─── */
+    .section-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--dim);
+      padding: 0 20px;
+      margin-bottom: 10px;
+    }
+
+    /* ─── DURATION PICKER ─── */
+    .duration-section { padding: 20px 20px 0; }
+    .preset-row {
+      display: flex; gap: 8px; flex-wrap: wrap;
+    }
+    .preset-chip {
+      padding: 8px 14px;
+      border-radius: 22px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--dim);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .preset-chip:active { transform: scale(0.95); }
+    .preset-chip.active {
+      background: var(--gold);
+      border-color: var(--accent3);
+      color: var(--accent);
+    }
+    .custom-duration {
+      display: flex; align-items: center; gap: 8px;
+      margin-top: 12px;
+    }
+    .custom-duration input {
+      width: 72px; padding: 8px 12px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      text-align: center;
+    }
+    .custom-duration input:focus {
+      outline: none;
+      border-color: var(--accent3);
+    }
+    .custom-duration label {
+      font-size: 13px; color: var(--dim);
+    }
+
+    /* ─── INTERVALS ─── */
+    .intervals-section { padding: 20px 20px 0; }
+    .interval-row {
+      display: flex; gap: 8px; flex-wrap: wrap;
+    }
+
+    /* ─── DIVIDER ─── */
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 20px 20px 0;
+    }
+
+    /* ─── SOUND PICKER ─── */
+    .sounds-section { padding: 20px 20px 0; }
+    .sounds-scroll {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .sounds-scroll::-webkit-scrollbar { display: none; }
+    .sound-card {
+      min-width: 80px;
+      padding: 12px 8px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    .sound-card:active { transform: scale(0.95); }
+    .sound-card.active {
+      background: var(--gold);
+      border-color: var(--accent3);
+    }
+    .sound-icon { font-size: 22px; margin-bottom: 5px; line-height: 1; }
+    .sound-name {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--dim);
+      letter-spacing: 0.05em;
+      word-break: break-word;
+      line-height: 1.3;
+    }
+    .sound-card.active .sound-name { color: var(--accent); }
+    .sounds-empty {
+      font-size: 12px;
+      color: var(--dim);
+      padding: 10px 0;
+      font-style: italic;
+    }
+
+    /* ─── PRESETS ─── */
+    .presets-section { padding: 20px 20px 0; }
+    .presets-scroll {
+      display: flex; gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .presets-scroll::-webkit-scrollbar { display: none; }
+    .preset-saved {
+      min-width: 100px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.2s;
+    }
+    .preset-saved:active { transform: scale(0.95); }
+    .preset-saved-name {
+      font-size: 13px; font-weight: 700; color: var(--text);
+      margin-bottom: 3px;
+    }
+    .preset-saved-detail {
+      font-size: 10px; color: var(--dim);
+    }
+    .preset-add {
+      min-width: 80px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px dashed var(--dim2);
+      background: transparent;
+      cursor: pointer;
+      flex-shrink: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 4px;
+      transition: all 0.2s;
+    }
+    .preset-add:active { transform: scale(0.95); }
+    .preset-add span:first-child { font-size: 18px; color: var(--dim); }
+    .preset-add span:last-child { font-size: 10px; color: var(--dim); font-weight: 600; }
+
+    /* ─── SETTINGS PANEL ─── */
+    .settings-panel {
       position: fixed;
       bottom: 0; left: 0; right: 0;
       background: var(--surface);
       border-top: 1px solid var(--border);
-      padding: 8px 20px;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--dim);
+      border-radius: 20px 20px 0 0;
+      padding: 16px 20px calc(20px + var(--safe-bot));
+      transform: translateY(100%);
+      transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+      z-index: 300;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    .settings-panel.open { transform: translateY(0); }
+    .settings-drag {
+      width: 36px; height: 4px;
+      background: var(--muted);
+      border-radius: 2px;
+      margin: 0 auto 16px;
+    }
+    .settings-title {
+      font-size: 16px; font-weight: 700; margin-bottom: 16px;
+      color: var(--text);
+    }
+    .settings-row {
       display: flex;
       align-items: center;
-      gap: 12px;
-      z-index: 100;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
     }
-    #info-bar img { height: 16px; opacity: 0.6; }
+    .settings-row:last-child { border-bottom: none; }
+    .settings-row-label { font-size: 14px; color: var(--text); font-weight: 500; }
+    .settings-row-sub { font-size: 11px; color: var(--dim); margin-top: 2px; }
+    .toggle {
+      width: 44px; height: 26px;
+      background: var(--muted);
+      border-radius: 13px;
+      cursor: pointer;
+      position: relative;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .toggle.on { background: var(--accent2); }
+    .toggle::after {
+      content: '';
+      position: absolute;
+      width: 20px; height: 20px;
+      background: white;
+      border-radius: 50%;
+      top: 3px; left: 3px;
+      transition: left 0.2s;
+    }
+    .toggle.on::after { left: 21px; }
+    .strikes-row { display: flex; gap: 8px; }
+    .strike-chip {
+      width: 40px; height: 32px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--dim);
+      font-size: 14px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .strike-chip.active {
+      background: var(--gold);
+      border-color: var(--accent3);
+      color: var(--accent);
+    }
+
+    /* ─── OVERLAY ─── */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 299;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .overlay.visible { opacity: 1; pointer-events: all; }
+
+    /* ─── NAME MODAL ─── */
+    .modal {
+      position: fixed;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%) scale(0.95);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 24px 20px;
+      width: calc(100% - 48px);
+      max-width: 340px;
+      z-index: 400;
+      opacity: 0; pointer-events: none;
+      transition: all 0.25s;
+    }
+    .modal.open {
+      opacity: 1; pointer-events: all;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+    .modal input {
+      width: 100%;
+      padding: 12px 14px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      font-size: 15px; font-weight: 600;
+      font-family: inherit;
+      margin-bottom: 14px;
+    }
+    .modal input:focus { outline: none; border-color: var(--accent3); }
+    .modal-btns { display: flex; gap: 10px; }
+    .modal-btn {
+      flex: 1; padding: 12px;
+      border-radius: 12px;
+      font-size: 14px; font-weight: 700;
+      cursor: pointer; border: none;
+      font-family: inherit; transition: all 0.2s;
+    }
+    .modal-btn.cancel { background: var(--card); color: var(--dim); }
+    .modal-btn.save { background: var(--accent); color: #07080c; }
+    .modal-btn:active { transform: scale(0.97); }
+
+    /* ─── BELL FLASH ─── */
+    @keyframes bellFlash {
+      0%, 100% { opacity: 1; }
+      25% { opacity: 0.3; }
+      50% { opacity: 1; }
+      75% { opacity: 0.3; }
+    }
+    .bell-flash { animation: bellFlash 0.8s ease; }
+
+    /* ─── RESPONSIVE ─── */
+    @media (min-width: 480px) {
+      .timer-display { font-size: 64px; }
+      .timer-ring-wrap { width: 260px; height: 260px; }
+    }
   </style>
 </head>
 <body>
+<div class="app">
 
-<header class="header">
-  <div class="brand">
-    <img src="/static/logo.png" onerror="this.style.display='none'">
-    <div class="brand-name">sitbell</div>
+  <!-- HEADER -->
+  <header class="header">
+    <div class="brand">SitBell</div>
+    <div class="header-actions">
+      <div class="icon-btn" id="vibrate-toggle" title="Vibrate mode">📳</div>
+      <div class="icon-btn" id="settings-btn">⚙️</div>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <div class="main" id="main-scroll">
+
+    <!-- TIMER FACE -->
+    <div class="timer-section">
+      <div class="timer-ring-wrap" id="ring-wrap">
+        <svg width="220" height="220" viewBox="0 0 220 220">
+          <circle class="ring-bg" cx="110" cy="110" r="100"/>
+          <circle class="ring-fill" id="ring-fill" cx="110" cy="110" r="100"/>
+        </svg>
+        <div class="timer-inner">
+          <div class="timer-display" id="timer-display">20:00</div>
+          <div class="timer-label" id="timer-label">ready</div>
+        </div>
+      </div>
+
+      <!-- interval progress dots -->
+      <div class="interval-dots" id="interval-dots"></div>
+
+      <!-- CONTROLS -->
+      <div class="controls">
+        <button class="btn btn-secondary" id="btn-cancel" title="Cancel">✕</button>
+        <button class="btn btn-play" id="btn-play">▶</button>
+        <button class="btn btn-secondary" id="btn-restart" title="Restart">↺</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- DURATION -->
+    <div class="duration-section">
+      <div class="section-label" style="margin-top:20px">Duration</div>
+      <div class="preset-row" id="duration-presets">
+        <div class="preset-chip" data-min="5">5m</div>
+        <div class="preset-chip active" data-min="10">10m</div>
+        <div class="preset-chip" data-min="15">15m</div>
+        <div class="preset-chip" data-min="20">20m</div>
+        <div class="preset-chip" data-min="30">30m</div>
+        <div class="preset-chip" data-min="45">45m</div>
+        <div class="preset-chip" data-min="60">60m</div>
+      </div>
+      <div class="custom-duration">
+        <input type="number" id="custom-min" min="1" max="180" placeholder="—" value="10"/>
+        <label for="custom-min">min custom</label>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- INTERVALS -->
+    <div class="intervals-section">
+      <div class="section-label" style="margin-top:20px">Intervals</div>
+      <div class="interval-row" id="interval-presets">
+        <div class="preset-chip active" data-interval="0">Off</div>
+        <div class="preset-chip" data-interval="5">5m</div>
+        <div class="preset-chip" data-interval="10">10m</div>
+        <div class="preset-chip" data-interval="15">15m</div>
+        <div class="preset-chip" data-interval="custom">Custom…</div>
+      </div>
+      <div class="custom-duration" id="interval-custom-row" style="display:none">
+        <input type="number" id="custom-interval" min="1" max="60" placeholder="—" value="5"/>
+        <label for="custom-interval">min interval</label>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- SOUNDS -->
+    <div class="sounds-section">
+      <div class="section-label" style="margin-top:20px">Bell Sound</div>
+      <div class="sounds-scroll" id="sounds-scroll">
+        <!-- populated by JS -->
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- SAVED PRESETS -->
+    <div class="presets-section">
+      <div class="section-label" style="margin-top:20px">Saved Presets</div>
+      <div class="presets-scroll" id="presets-scroll">
+        <div class="preset-add" id="btn-save-preset">
+          <span>＋</span>
+          <span>Save</span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- SETTINGS PANEL -->
+<div class="overlay" id="overlay"></div>
+<div class="settings-panel" id="settings-panel">
+  <div class="settings-drag"></div>
+  <div class="settings-title">Settings</div>
+
+  <div class="settings-row">
+    <div>
+      <div class="settings-row-label">Start bell</div>
+      <div class="settings-row-sub">Ring when session begins</div>
+    </div>
+    <div class="toggle on" id="toggle-start-bell"></div>
   </div>
-</header>
 
-<div class="main">
-  <!-- Build your dashboard here -->
+  <div class="settings-row">
+    <div>
+      <div class="settings-row-label">End bell</div>
+      <div class="settings-row-sub">Ring once when session ends, then silence</div>
+    </div>
+    <div class="toggle on" id="toggle-end-bell"></div>
+  </div>
+
+  <div class="settings-row">
+    <div>
+      <div class="settings-row-label">Interval bells</div>
+      <div class="settings-row-sub">Ring at each interval mark</div>
+    </div>
+    <div class="toggle on" id="toggle-interval-bell"></div>
+  </div>
+
+  <div class="settings-row">
+    <div>
+      <div class="settings-row-label">Bell strikes</div>
+      <div class="settings-row-sub">How many times to strike</div>
+    </div>
+    <div class="strikes-row">
+      <div class="strike-chip active" data-strikes="1">1</div>
+      <div class="strike-chip" data-strikes="2">2</div>
+      <div class="strike-chip" data-strikes="3">3</div>
+    </div>
+  </div>
+
+  <div class="settings-row">
+    <div>
+      <div class="settings-row-label">Vibrate instead of sound</div>
+      <div class="settings-row-sub">Silent mode for airplane / watch</div>
+    </div>
+    <div class="toggle" id="toggle-vibrate"></div>
+  </div>
+
+  <div class="settings-row">
+    <div>
+      <div class="settings-row-label">Keep screen awake</div>
+      <div class="settings-row-sub">Prevents auto-lock during session</div>
+    </div>
+    <div class="toggle on" id="toggle-wake"></div>
+  </div>
+
 </div>
 
-<div id="info-bar">
-  <img src="/static/logo.png" onerror="this.style.display='none'">
-  <span>sitbell</span>
+<!-- SAVE PRESET MODAL -->
+<div class="modal" id="preset-modal">
+  <div class="modal-title">Name this preset</div>
+  <input type="text" id="preset-name-input" placeholder="e.g. Morning sit, 20 min" maxlength="40"/>
+  <div class="modal-btns">
+    <button class="modal-btn cancel" id="modal-cancel">Cancel</button>
+    <button class="modal-btn save" id="modal-save">Save</button>
+  </div>
 </div>
 
+<script>
+// ══════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════
+const state = {
+  durationMin: 10,
+  intervalMin: 0,
+  selectedSound: '__synth__',
+  strikes: 1,
+  vibrateMode: false,
+  startBell: true,
+  endBell: true,
+  intervalBell: true,
+  keepAwake: true,
+  running: false,
+  paused: false,
+  totalSecs: 0,
+  remainingSecs: 0,
+  intervalId: null,
+  wakeLock: null,
+  sounds: {},       // name -> AudioBuffer
+  soundList: [],    // [{name, filename}]
+};
+
+// ══════════════════════════════════════════════════════
+//  AUDIO
+// ══════════════════════════════════════════════════════
+let audioCtx = null;
+
+function getCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+// Synthesized fallback bell using FM
+function synthBell(ctx, when) {
+  const carrier = ctx.createOscillator();
+  const modulator = ctx.createOscillator();
+  const modGain = ctx.createGain();
+  const masterGain = ctx.createGain();
+
+  carrier.type = 'sine';
+  carrier.frequency.setValueAtTime(440, when);
+  carrier.frequency.exponentialRampToValueAtTime(432, when + 0.5);
+
+  modulator.type = 'sine';
+  modulator.frequency.setValueAtTime(880, when);
+  modGain.gain.setValueAtTime(220, when);
+  modGain.gain.exponentialRampToValueAtTime(0.001, when + 0.3);
+
+  masterGain.gain.setValueAtTime(0.7, when);
+  masterGain.gain.exponentialRampToValueAtTime(0.001, when + 4.0);
+
+  modulator.connect(modGain);
+  modGain.connect(carrier.frequency);
+  carrier.connect(masterGain);
+  masterGain.connect(ctx.destination);
+
+  modulator.start(when); modulator.stop(when + 0.4);
+  carrier.start(when); carrier.stop(when + 4.5);
+}
+
+async function loadSound(filename) {
+  if (state.sounds[filename]) return;
+  try {
+    const resp = await fetch('/sounds/' + encodeURIComponent(filename));
+    const buf = await resp.arrayBuffer();
+    const ctx = getCtx();
+    state.sounds[filename] = await ctx.decodeAudioData(buf);
+  } catch(e) {
+    console.warn('Could not load sound:', filename, e);
+  }
+}
+
+function playBuffer(buffer, when) {
+  const ctx = getCtx();
+  const src = ctx.createBufferSource();
+  src.buffer = buffer;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(1, when);
+  src.connect(g);
+  g.connect(ctx.destination);
+  src.start(when);
+}
+
+function ringBell(delayFromNow = 0) {
+  if (state.vibrateMode) {
+    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+    return;
+  }
+  const ctx = getCtx();
+  const when = ctx.currentTime + delayFromNow;
+  const n = state.strikes;
+  const gap = 1.2;
+
+  for (let i = 0; i < n; i++) {
+    const t = when + i * gap;
+    if (state.selectedSound === '__synth__') {
+      synthBell(ctx, t);
+    } else {
+      const buf = state.sounds[state.selectedSound];
+      if (buf) playBuffer(buf, t);
+      else synthBell(ctx, t);
+    }
+  }
+
+  // visual flash
+  const display = document.getElementById('timer-display');
+  display.classList.remove('bell-flash');
+  void display.offsetWidth;
+  display.classList.add('bell-flash');
+  display.addEventListener('animationend', () => display.classList.remove('bell-flash'), {once: true});
+}
+
+// Preview a sound card (single strike, immediate)
+function previewSound(filename) {
+  getCtx();
+  if (filename === '__synth__') { synthBell(getCtx(), getCtx().currentTime + 0.05); return; }
+  loadSound(filename).then(() => {
+    const buf = state.sounds[filename];
+    if (buf) playBuffer(buf, getCtx().currentTime + 0.05);
+    else synthBell(getCtx(), getCtx().currentTime + 0.05);
+  });
+}
+
+// ══════════════════════════════════════════════════════
+//  TIMER CORE
+// ══════════════════════════════════════════════════════
+function formatTime(secs) {
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+}
+
+function updateRing(remaining, total) {
+  const fill = document.getElementById('ring-fill');
+  const circumference = 628; // 2 * pi * 100
+  const frac = total > 0 ? remaining / total : 1;
+  fill.style.strokeDashoffset = circumference * (1 - frac);
+}
+
+function updateDots() {
+  const container = document.getElementById('interval-dots');
+  if (state.intervalMin <= 0) { container.innerHTML = ''; return; }
+  const total = state.durationMin;
+  const step = state.intervalMin;
+  const count = Math.floor(total / step);
+  if (count <= 0 || count > 20) { container.innerHTML = ''; return; }
+
+  const elapsed = state.totalSecs - state.remainingSecs;
+  const elapsedMin = elapsed / 60;
+
+  container.innerHTML = '';
+  for (let i = 1; i <= count; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'interval-dot';
+    const dotMin = i * step;
+    if (dotMin < total) {
+      if (elapsedMin >= dotMin) dot.classList.add('passed');
+      else if (elapsedMin >= dotMin - 0.5) dot.classList.add('current');
+    }
+    container.appendChild(dot);
+  }
+}
+
+function tick() {
+  if (!state.running || state.paused) return;
+  state.remainingSecs--;
+
+  const display = document.getElementById('timer-display');
+  const label = document.getElementById('timer-label');
+
+  display.textContent = formatTime(state.remainingSecs);
+  updateRing(state.remainingSecs, state.totalSecs);
+  updateDots();
+
+  // interval bell check
+  if (state.intervalBell && state.intervalMin > 0 && state.remainingSecs > 0) {
+    const elapsed = state.totalSecs - state.remainingSecs;
+    const stepSecs = state.intervalMin * 60;
+    if (elapsed > 0 && elapsed % stepSecs === 0) {
+      ringBell();
+    }
+  }
+
+  // end
+  if (state.remainingSecs <= 0) {
+    if (state.endBell) ringBell();
+    stopTimer(false);
+    label.textContent = 'complete';
+    display.textContent = '00:00';
+    updateRing(0, state.totalSecs);
+    sendNotification('Session complete', 'Your meditation is done. Well done.');
+    return;
+  }
+
+  // notification updates (every minute)
+  if (state.remainingSecs % 60 === 0) {
+    const minLeft = Math.floor(state.remainingSecs / 60);
+    sendNotification('SitBell', `${minLeft}m remaining`);
+  }
+
+  // label: min remaining
+  const minLeft = Math.ceil(state.remainingSecs / 60);
+  label.textContent = minLeft + 'm left';
+}
+
+function startTimer() {
+  getCtx(); // unlock audio on user gesture
+  state.totalSecs = state.durationMin * 60;
+  state.remainingSecs = state.totalSecs;
+  state.running = true;
+  state.paused = false;
+
+  if (state.startBell) ringBell(0.2);
+
+  const display = document.getElementById('timer-display');
+  display.classList.add('running');
+  document.getElementById('timer-label').textContent = state.durationMin + 'm left';
+  document.getElementById('btn-play').textContent = '⏸';
+  document.getElementById('btn-play').classList.add('running');
+  document.getElementById('btn-cancel').classList.add('visible');
+  document.getElementById('btn-restart').classList.add('visible');
+  updateRing(state.totalSecs, state.totalSecs);
+  updateDots();
+
+  acquireWakeLock();
+
+  state.intervalId = setInterval(tick, 1000);
+
+  requestNotificationPermission();
+}
+
+function pauseTimer() {
+  state.paused = true;
+  clearInterval(state.intervalId);
+  document.getElementById('btn-play').textContent = '▶';
+  document.getElementById('btn-play').classList.remove('running');
+  document.getElementById('timer-label').textContent = 'paused';
+  releaseWakeLock();
+}
+
+function resumeTimer() {
+  state.paused = false;
+  document.getElementById('btn-play').textContent = '⏸';
+  document.getElementById('btn-play').classList.add('running');
+  const minLeft = Math.ceil(state.remainingSecs / 60);
+  document.getElementById('timer-label').textContent = minLeft + 'm left';
+  acquireWakeLock();
+  state.intervalId = setInterval(tick, 1000);
+}
+
+function stopTimer(reset = true) {
+  state.running = false;
+  state.paused = false;
+  clearInterval(state.intervalId);
+  releaseWakeLock();
+
+  const display = document.getElementById('timer-display');
+  display.classList.remove('running');
+  document.getElementById('btn-play').textContent = '▶';
+  document.getElementById('btn-play').classList.remove('running');
+  document.getElementById('btn-cancel').classList.remove('visible');
+  document.getElementById('btn-restart').classList.remove('visible');
+
+  if (reset) {
+    state.remainingSecs = state.durationMin * 60;
+    display.textContent = formatTime(state.durationMin * 60);
+    document.getElementById('timer-label').textContent = 'ready';
+    updateRing(state.totalSecs, state.totalSecs);
+    document.getElementById('interval-dots').innerHTML = '';
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  WAKE LOCK
+// ══════════════════════════════════════════════════════
+async function acquireWakeLock() {
+  if (!state.keepAwake) return;
+  try {
+    if ('wakeLock' in navigator) {
+      state.wakeLock = await navigator.wakeLock.request('screen');
+    }
+  } catch(e) {}
+}
+
+function releaseWakeLock() {
+  if (state.wakeLock) { state.wakeLock.release(); state.wakeLock = null; }
+}
+
+// ══════════════════════════════════════════════════════
+//  NOTIFICATIONS
+// ══════════════════════════════════════════════════════
+function requestNotificationPermission() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}
+
+function sendNotification(title, body) {
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification(title, { body, icon: '/static/icons/icon-192.png', silent: true });
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  SOUND LOADING
+// ══════════════════════════════════════════════════════
+async function loadSoundList() {
+  const scroll = document.getElementById('sounds-scroll');
+  scroll.innerHTML = '';
+
+  // Always add synth fallback first
+  const synthCard = makeSoundCard('__synth__', 'Synth Bell', '🔔');
+  synthCard.classList.add('active');
+  scroll.appendChild(synthCard);
+
+  try {
+    const resp = await fetch('/api/sounds');
+    const list = await resp.json();
+    state.soundList = list;
+
+    if (list.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'sounds-empty';
+      empty.textContent = 'Add .wav/.aif files to ~/Desktop/timers change to see them here';
+      scroll.appendChild(empty);
+    } else {
+      for (const s of list) {
+        const icon = guessIcon(s.name);
+        const card = makeSoundCard(s.filename, s.name, icon);
+        scroll.appendChild(card);
+        loadSound(s.filename); // preload
+      }
+    }
+  } catch(e) {
+    console.warn('Could not fetch sounds list');
+  }
+}
+
+function guessIcon(name) {
+  const n = name.toLowerCase();
+  if (n.includes('bowl') || n.includes('singing')) return '🎵';
+  if (n.includes('gong')) return '🥁';
+  if (n.includes('tibetan') || n.includes('tibetan')) return '🪘';
+  if (n.includes('temple') || n.includes('buddhist')) return '🏛';
+  if (n.includes('wood') || n.includes('block')) return '🪵';
+  if (n.includes('chime') || n.includes('tingsha')) return '🎐';
+  if (n.includes('crystal')) return '💎';
+  if (n.includes('indian') || n.includes('bell')) return '🔔';
+  if (n.includes('gong')) return '🥁';
+  return '🔔';
+}
+
+function makeSoundCard(key, name, icon) {
+  const card = document.createElement('div');
+  card.className = 'sound-card';
+  card.dataset.key = key;
+  card.innerHTML = `<div class="sound-icon">${icon}</div><div class="sound-name">${name}</div>`;
+  card.addEventListener('click', () => {
+    getCtx();
+    selectSound(key);
+    previewSound(key);
+  });
+  return card;
+}
+
+function selectSound(key) {
+  state.selectedSound = key;
+  document.querySelectorAll('.sound-card').forEach(c => {
+    c.classList.toggle('active', c.dataset.key === key);
+  });
+}
+
+// ══════════════════════════════════════════════════════
+//  PRESETS
+// ══════════════════════════════════════════════════════
+function loadPresets() {
+  const saved = JSON.parse(localStorage.getItem('sitbell_presets') || '[]');
+  const scroll = document.getElementById('presets-scroll');
+  // clear existing preset cards (keep the + button)
+  scroll.querySelectorAll('.preset-saved').forEach(el => el.remove());
+
+  for (const p of saved) {
+    const el = makePresetEl(p);
+    scroll.insertBefore(el, document.getElementById('btn-save-preset'));
+  }
+}
+
+function makePresetEl(p) {
+  const el = document.createElement('div');
+  el.className = 'preset-saved';
+  el.innerHTML = `
+    <div class="preset-saved-name">${p.name}</div>
+    <div class="preset-saved-detail">${p.durationMin}m · ${p.intervalMin > 0 ? 'every ' + p.intervalMin + 'm' : 'no intervals'}</div>
+  `;
+  el.addEventListener('click', () => applyPreset(p));
+  el.addEventListener('long-press', () => deletePreset(p.id));
+  // long press via pointer events
+  let timer;
+  el.addEventListener('pointerdown', () => {
+    timer = setTimeout(() => {
+      if (confirm(`Delete preset "${p.name}"?`)) deletePreset(p.id);
+    }, 700);
+  });
+  el.addEventListener('pointerup', () => clearTimeout(timer));
+  el.addEventListener('pointercancel', () => clearTimeout(timer));
+  return el;
+}
+
+function applyPreset(p) {
+  setDuration(p.durationMin);
+  setInterval_(p.intervalMin);
+  if (p.sound) selectSound(p.sound);
+  state.strikes = p.strikes || 1;
+  updateStrikeChips();
+}
+
+function saveCurrentPreset(name) {
+  const saved = JSON.parse(localStorage.getItem('sitbell_presets') || '[]');
+  saved.push({
+    id: Date.now(),
+    name,
+    durationMin: state.durationMin,
+    intervalMin: state.intervalMin,
+    sound: state.selectedSound,
+    strikes: state.strikes,
+  });
+  localStorage.setItem('sitbell_presets', JSON.stringify(saved));
+  loadPresets();
+}
+
+function deletePreset(id) {
+  const saved = JSON.parse(localStorage.getItem('sitbell_presets') || '[]');
+  localStorage.setItem('sitbell_presets', JSON.stringify(saved.filter(p => p.id !== id)));
+  loadPresets();
+}
+
+// ══════════════════════════════════════════════════════
+//  DURATION / INTERVAL SETTERS
+// ══════════════════════════════════════════════════════
+function setDuration(min) {
+  state.durationMin = min;
+  document.getElementById('custom-min').value = min;
+  document.querySelectorAll('#duration-presets .preset-chip').forEach(c => {
+    c.classList.toggle('active', parseInt(c.dataset.min) === min);
+  });
+  if (!state.running) {
+    document.getElementById('timer-display').textContent = formatTime(min * 60);
+    updateRing(min * 60, min * 60);
+  }
+}
+
+function setInterval_(min) {
+  state.intervalMin = min;
+  document.querySelectorAll('#interval-presets .preset-chip').forEach(c => {
+    const val = c.dataset.interval === 'custom' ? 'custom' : parseInt(c.dataset.interval);
+    c.classList.toggle('active', val === (min === 0 ? 0 : min));
+  });
+  document.getElementById('interval-custom-row').style.display =
+    (min > 0 && !([5,10,15].includes(min))) ? 'flex' : 'none';
+  if (!state.running) updateDots();
+}
+
+function updateStrikeChips() {
+  document.querySelectorAll('.strike-chip').forEach(c => {
+    c.classList.toggle('active', parseInt(c.dataset.strikes) === state.strikes);
+  });
+}
+
+// ══════════════════════════════════════════════════════
+//  SETTINGS TOGGLES
+// ══════════════════════════════════════════════════════
+function makeToggle(id, stateKey) {
+  const el = document.getElementById(id);
+  el.addEventListener('click', () => {
+    state[stateKey] = !state[stateKey];
+    el.classList.toggle('on', state[stateKey]);
+    if (stateKey === 'vibrateMode') {
+      document.getElementById('vibrate-toggle').classList.toggle('active', state.vibrateMode);
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════════
+//  SETTINGS PANEL
+// ══════════════════════════════════════════════════════
+function openSettings() {
+  document.getElementById('settings-panel').classList.add('open');
+  document.getElementById('overlay').classList.add('visible');
+}
+
+function closeSettings() {
+  document.getElementById('settings-panel').classList.remove('open');
+  document.getElementById('overlay').classList.remove('visible');
+}
+
+// ══════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', async () => {
+  // timer display initial
+  document.getElementById('timer-display').textContent = formatTime(state.durationMin * 60);
+  updateRing(state.durationMin * 60, state.durationMin * 60);
+
+  // play/pause
+  document.getElementById('btn-play').addEventListener('click', () => {
+    if (!state.running) startTimer();
+    else if (!state.paused) pauseTimer();
+    else resumeTimer();
+  });
+
+  // cancel
+  document.getElementById('btn-cancel').addEventListener('click', () => {
+    if (confirm('Cancel this session?')) stopTimer(true);
+  });
+
+  // restart
+  document.getElementById('btn-restart').addEventListener('click', () => {
+    if (confirm('Restart from the beginning?')) {
+      stopTimer(true);
+      startTimer();
+    }
+  });
+
+  // duration presets
+  document.querySelectorAll('#duration-presets .preset-chip').forEach(c => {
+    c.addEventListener('click', () => {
+      if (!state.running) setDuration(parseInt(c.dataset.min));
+    });
+  });
+
+  // custom duration
+  document.getElementById('custom-min').addEventListener('change', e => {
+    const v = Math.max(1, Math.min(180, parseInt(e.target.value) || 10));
+    if (!state.running) setDuration(v);
+  });
+
+  // interval presets
+  document.querySelectorAll('#interval-presets .preset-chip').forEach(c => {
+    c.addEventListener('click', () => {
+      const v = c.dataset.interval;
+      if (v === 'custom') {
+        document.getElementById('interval-custom-row').style.display = 'flex';
+        document.querySelectorAll('#interval-presets .preset-chip').forEach(x => x.classList.remove('active'));
+        c.classList.add('active');
+      } else {
+        document.getElementById('interval-custom-row').style.display = 'none';
+        setInterval_(parseInt(v));
+      }
+    });
+  });
+
+  document.getElementById('custom-interval').addEventListener('change', e => {
+    const v = Math.max(1, Math.min(60, parseInt(e.target.value) || 5));
+    setInterval_(v);
+  });
+
+  // settings panel
+  document.getElementById('settings-btn').addEventListener('click', openSettings);
+  document.getElementById('overlay').addEventListener('click', closeSettings);
+
+  // toggles
+  makeToggle('toggle-start-bell', 'startBell');
+  makeToggle('toggle-end-bell', 'endBell');
+  makeToggle('toggle-interval-bell', 'intervalBell');
+  makeToggle('toggle-vibrate', 'vibrateMode');
+  makeToggle('toggle-wake', 'keepAwake');
+
+  // vibrate header toggle
+  document.getElementById('vibrate-toggle').addEventListener('click', () => {
+    state.vibrateMode = !state.vibrateMode;
+    document.getElementById('vibrate-toggle').classList.toggle('active', state.vibrateMode);
+    document.getElementById('toggle-vibrate').classList.toggle('on', state.vibrateMode);
+  });
+
+  // strikes
+  document.querySelectorAll('.strike-chip').forEach(c => {
+    c.addEventListener('click', () => {
+      state.strikes = parseInt(c.dataset.strikes);
+      updateStrikeChips();
+    });
+  });
+
+  // save preset
+  document.getElementById('btn-save-preset').addEventListener('click', () => {
+    document.getElementById('preset-modal').classList.add('open');
+    document.getElementById('overlay').classList.add('visible');
+    document.getElementById('preset-name-input').focus();
+  });
+  document.getElementById('modal-cancel').addEventListener('click', () => {
+    document.getElementById('preset-modal').classList.remove('open');
+    document.getElementById('overlay').classList.remove('visible');
+  });
+  document.getElementById('modal-save').addEventListener('click', () => {
+    const name = document.getElementById('preset-name-input').value.trim() || 'Untitled';
+    saveCurrentPreset(name);
+    document.getElementById('preset-modal').classList.remove('open');
+    document.getElementById('overlay').classList.remove('visible');
+    document.getElementById('preset-name-input').value = '';
+  });
+  document.getElementById('preset-name-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('modal-save').click();
+  });
+
+  // load sounds + presets
+  await loadSoundList();
+  loadPresets();
+
+  // register service worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/static/sw.js').catch(() => {});
+  }
+
+  // PWA install hint: handled by browser prompt automatically
+});
+</script>
 </body>
 </html>

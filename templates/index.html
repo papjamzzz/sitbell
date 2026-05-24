@@ -1569,6 +1569,9 @@ async function loadSoundList() {
         scroll.appendChild(card);
         loadSound(s.filename); // preload
       }
+      // Auto-select first real bell — deactivate synth default
+      synthCard.classList.remove('active');
+      selectSound(list[0].filename);
     }
   } catch(e) {
     console.warn('Could not fetch sounds list');

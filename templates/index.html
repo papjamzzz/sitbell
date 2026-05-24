@@ -729,7 +729,148 @@
       pointer-events: none;
       z-index: 2;
     }
-    </style>
+  
+    /* ── QUICK-SELECT PILLS ──────────────────────────────────── */
+    .pills {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .pill {
+      padding: 7px 18px;
+      border-radius: 20px;
+      border: 1px solid rgba(0,255,255,0.20);
+      background: rgba(0,0,0,0.38);
+      color: rgba(0,255,255,0.45);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      transition: all 0.18s;
+      backdrop-filter: blur(6px);
+      user-select: none;
+    }
+    .pill:active { transform: scale(0.95); }
+    .pill.active {
+      background: rgba(0,255,255,0.12);
+      border-color: var(--accent);
+      color: var(--accent);
+      box-shadow: 0 0 12px rgba(0,255,255,0.18);
+    }
+
+    /* ── LOG PANEL ───────────────────────────────────────────── */
+    .log-panel {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: rgba(3, 0, 14, 0.96);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      border-top: 1px solid var(--border);
+      border-radius: 16px 16px 0 0;
+      padding: 16px 20px calc(32px + var(--safe-bot));
+      transform: translateY(100%);
+      transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+      z-index: 300;
+      max-height: 75vh;
+      overflow-y: auto;
+    }
+    .log-panel.open { transform: translateY(0); }
+    .log-drag {
+      width: 32px; height: 3px;
+      background: rgba(0,255,255,0.22);
+      border-radius: 2px;
+      margin: 0 auto 18px;
+    }
+    .log-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .log-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 400;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--dim);
+    }
+    .log-clear {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      color: rgba(255,0,255,0.45);
+      cursor: pointer;
+      background: none;
+      border: none;
+      text-transform: uppercase;
+    }
+    .log-empty {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: rgba(0,255,255,0.25);
+      text-align: center;
+      padding: 32px 0;
+      letter-spacing: 0.08em;
+    }
+    .log-entry {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(0,255,255,0.07);
+    }
+    .log-entry:last-child { border-bottom: none; }
+    .log-date {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: rgba(0,255,255,0.35);
+      letter-spacing: 0.06em;
+      margin-bottom: 3px;
+    }
+    .log-dur {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 18px;
+      font-weight: 300;
+      color: rgba(255,255,255,0.88);
+    }
+    .log-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 10px;
+      border: 1px solid;
+    }
+    .log-badge.complete {
+      color: rgba(0,255,255,0.70);
+      border-color: rgba(0,255,255,0.25);
+    }
+    .log-badge.partial {
+      color: rgba(255,160,0,0.70);
+      border-color: rgba(255,160,0,0.25);
+    }
+    .health-btn {
+      display: none;
+      margin: 0 auto 16px;
+      padding: 10px 24px;
+      border-radius: 20px;
+      border: 1px solid rgba(255,55,95,0.40);
+      background: rgba(255,55,95,0.08);
+      color: rgba(255,55,95,0.80);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .health-btn.visible { display: block; }
+    .health-btn:hover { background: rgba(255,55,95,0.14); }
+      </style>
 </head>
 <body>
 
@@ -750,6 +891,7 @@
   <header class="header floatui">
     <div class="brand">Melt</div>
     <div class="header-actions">
+      <div class="icon-btn" id="log-btn" title="Session log">◫</div>
       <div class="icon-btn" id="vibrate-toggle" title="Vibrate mode">📳</div>
       <div class="icon-btn" id="settings-btn">⚙️</div>
     </div>
@@ -768,6 +910,15 @@
 
       <!-- interval progress dots -->
       <div class="interval-dots" id="interval-dots"></div>
+
+      <!-- QUICK-SELECT PILLS (floatui) -->
+      <div class="pills floatui" id="quick-pills">
+        <div class="pill" data-min="5">5 m</div>
+        <div class="pill" data-min="20">20 m</div>
+        <div class="pill" data-min="30">30 m</div>
+        <div class="pill active" data-min="60">1 h</div>
+        <div class="pill" data-min="120">2 h</div>
+      </div>
 
       <!-- TIME DRUM PICKER (floatui — hides when idle) -->
       <div class="drum-wrap floatui" id="drum-wrap">
@@ -840,6 +991,17 @@
 
   </div><!-- /main -->
 </div><!-- /app -->
+
+<!-- LOG PANEL -->
+<div class="log-panel" id="log-panel">
+  <div class="log-drag"></div>
+  <div class="log-header">
+    <div class="log-title">Session Log</div>
+    <button class="log-clear" id="log-clear">Clear</button>
+  </div>
+  <button class="health-btn" id="health-btn">＋ Add to Apple Health</button>
+  <div id="log-entries"></div>
+</div>
 
 <!-- SETTINGS PANEL -->
 <div class="overlay" id="overlay"></div>
@@ -1420,6 +1582,7 @@ function tick() {
   // end
   if (state.remainingSecs <= 0) {
     if (state.endBell) ringBell();
+    logSession(state.totalSecs, state.totalSecs, true);
     stopTimer(false);
     label.textContent = 'complete';
     display.textContent = '00:00';
@@ -1752,7 +1915,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // cancel
   document.getElementById('btn-cancel').addEventListener('click', () => {
-    if (confirm('Cancel this session?')) stopTimer(true);
+    if (confirm('Cancel this session?')) {
+      if (state.running || state.paused) {
+        const actual = state.totalSecs - state.remainingSecs;
+        if (actual > 30) logSession(state.totalSecs, actual, false);
+      }
+      stopTimer(true);
+    }
   });
 
   // restart
@@ -1840,6 +2009,31 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadSoundList();
   loadPresets();
 
+  // quick-select pills
+  document.querySelectorAll('.pill').forEach(p => {
+    p.addEventListener('click', () => {
+      if (state.running) return;
+      const min = parseInt(p.dataset.min);
+      setDuration(min);
+      if (window._drumSync) window._drumSync(min);
+      document.querySelectorAll('.pill').forEach(x => x.classList.remove('active'));
+      p.classList.add('active');
+    });
+  });
+
+  // log panel
+  document.getElementById('log-btn').addEventListener('click', openLog);
+  document.getElementById('log-clear').addEventListener('click', () => {
+    if (confirm('Clear all session history?')) {
+      localStorage.removeItem('melt_sessions');
+      renderLog();
+    }
+  });
+  document.getElementById('health-btn').addEventListener('click', () => {
+    const mins = parseInt(document.getElementById('health-btn').dataset.mins || '60');
+    logToAppleHealth(mins);
+  });
+
   // floating UI + drum
   initAutoHide();
   initDrum();
@@ -1851,6 +2045,76 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // PWA install hint: handled by browser prompt automatically
 });
+
+
+// ══════════════════════════════════════════════════════
+//  SESSION LOG
+// ══════════════════════════════════════════════════════
+function logSession(totalSecs, actualSecs, completed) {
+  const sessions = JSON.parse(localStorage.getItem('melt_sessions') || '[]');
+  const entry = {
+    id:        Date.now(),
+    timestamp: new Date().toISOString(),
+    totalSecs,
+    actualSecs,
+    completed,
+    sound:     state.selectedSound,
+  };
+  sessions.unshift(entry); // newest first
+  if (sessions.length > 100) sessions.pop(); // cap at 100
+  localStorage.setItem('melt_sessions', JSON.stringify(sessions));
+  renderLog();
+  // Show health button after each session
+  document.getElementById('health-btn').classList.add('visible');
+  document.getElementById('health-btn').dataset.mins = Math.round(actualSecs / 60);
+}
+
+function renderLog() {
+  const container = document.getElementById('log-entries');
+  const sessions  = JSON.parse(localStorage.getItem('melt_sessions') || '[]');
+  if (sessions.length === 0) {
+    container.innerHTML = '<div class="log-empty">no sessions yet</div>';
+    return;
+  }
+  container.innerHTML = sessions.map(s => {
+    const d      = new Date(s.timestamp);
+    const dateStr = d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+    const timeStr = d.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
+    const mins   = Math.round(s.actualSecs / 60);
+    const durStr = mins >= 60
+      ? `${Math.floor(mins/60)}h ${mins%60 > 0 ? (mins%60)+'m' : ''}`.trim()
+      : `${mins}m`;
+    const badge  = s.completed
+      ? '<span class="log-badge complete">complete</span>'
+      : '<span class="log-badge partial">partial</span>';
+    return \`<div class="log-entry">
+      <div>
+        <div class="log-date">\${dateStr} · \${timeStr}</div>
+        <div class="log-dur">\${durStr}</div>
+      </div>
+      \${badge}
+    </div>\`;
+  }).join('');
+}
+
+function openLog() {
+  renderLog();
+  document.getElementById('log-panel').classList.add('open');
+  document.getElementById('overlay').classList.add('visible');
+}
+
+function closeLog() {
+  document.getElementById('log-panel').classList.remove('open');
+  document.getElementById('overlay').classList.remove('visible');
+}
+
+// Apple Health via iOS Shortcuts URL scheme
+// User needs a Shortcut named "Log Melt Session" that accepts minutes as input
+// and logs a Mindful Minutes entry to Apple Health
+function logToAppleHealth(mins) {
+  const url = `shortcuts://run-shortcut?name=Log%20Melt%20Session&input=text&text=\${mins}`;
+  window.location.href = url;
+}
 
 
 // ══════════════════════════════════════════════════════

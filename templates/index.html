@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-  <meta name="apple-mobile-web-app-title" content="SitBell"/>
+  <meta name="apple-mobile-web-app-title" content="Melt"/>
   <meta name="theme-color" content="#0c0905"/>
-  <title>SitBell</title>
+  <title>Melt</title>
   <link rel="manifest" href="/static/manifest.json"/>
   <link rel="apple-touch-icon" href="/static/icons/icon-192.png"/>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
@@ -748,7 +748,7 @@
 
   <!-- HEADER -->
   <header class="header floatui">
-    <div class="brand">SitBell</div>
+    <div class="brand">Melt</div>
     <div class="header-actions">
       <div class="icon-btn" id="vibrate-toggle" title="Vibrate mode">📳</div>
       <div class="icon-btn" id="settings-btn">⚙️</div>
@@ -1431,7 +1431,7 @@ function tick() {
   // notification updates (every minute)
   if (state.remainingSecs % 60 === 0) {
     const minLeft = Math.floor(state.remainingSecs / 60);
-    sendNotification('SitBell', `${minLeft}m remaining`);
+    sendNotification('Melt', `${minLeft}m remaining`);
   }
 
   // label: min remaining

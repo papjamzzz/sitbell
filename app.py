@@ -7,7 +7,14 @@ load_dotenv()
 app = Flask(__name__)
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 
-SOUNDS_DIR = pathlib.Path.home() / "Desktop" / "timers change"
+# Sounds dir: env var override, else ~/Desktop/timers change (local dev)
+# On Railway, drop .wav files into /sounds/ volume or set SOUNDS_DIR env var
+_sounds_env = os.environ.get('SOUNDS_DIR')
+if _sounds_env:
+    SOUNDS_DIR = pathlib.Path(_sounds_env)
+else:
+    SOUNDS_DIR = pathlib.Path.home() / "Desktop" / "timers change"
+
 AUDIO_EXTENSIONS = {'.wav', '.mp3', '.aif', '.aiff', '.flac', '.ogg', '.m4a'}
 
 @app.route('/')
@@ -32,7 +39,9 @@ def serve_sound(filename):
 
 @app.route('/api/status')
 def status():
-    return jsonify({'status': 'ok', 'project': 'sitbell'})
+    return jsonify({'status': 'ok', 'project': 'melt'})
 
 if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=5567, debug=False)
+    port = int(os.environ.get('PORT', 5567))
+    host = '0.0.0.0' if os.environ.get('RAILWAY_ENVIRONMENT') else '127.0.0.1'
+    app.run(host=host, port=port, debug=False)

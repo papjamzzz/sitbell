@@ -1,11 +1,11 @@
 {
-  "name": "SitBell",
-  "short_name": "SitBell",
-  "description": "Meditation timer with high-quality bells",
+  "name": "Melt",
+  "short_name": "Melt",
+  "description": "Dissolution meditation timer",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#07080c",
-  "theme_color": "#07080c",
+  "background_color": "#000005",
+  "theme_color": "#000005",
   "orientation": "portrait",
   "icons": [
     {

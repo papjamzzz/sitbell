@@ -2173,13 +2173,13 @@ function renderLog() {
     const badge  = s.completed
       ? '<span class="log-badge complete">complete</span>'
       : '<span class="log-badge partial">partial</span>';
-    return \`<div class="log-entry">
+    return `<div class="log-entry">
       <div>
-        <div class="log-date">\${dateStr} · \${timeStr}</div>
-        <div class="log-dur">\${durStr}</div>
+        <div class="log-date">${dateStr} · ${timeStr}</div>
+        <div class="log-dur">${durStr}</div>
       </div>
-      \${badge}
-    </div>\`;
+      ${badge}
+    </div>`;
   }).join('');
 }
 
@@ -2198,7 +2198,7 @@ function closeLog() {
 // User needs a Shortcut named "Log Melt Session" that accepts minutes as input
 // and logs a Mindful Minutes entry to Apple Health
 function logToAppleHealth(mins) {
-  const url = `shortcuts://run-shortcut?name=Log%20Melt%20Session&input=text&text=\${mins}`;
+  const url = `shortcuts://run-shortcut?name=Log%20Melt%20Session&input=text&text=${mins}`;
   window.location.href = url;
 }
 

@@ -125,35 +125,30 @@
     .header {
       position: fixed;
       top: 0; left: 0; right: 0;
-      height: 60px;
+      height: 80px;
       padding: 0 20px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background: rgba(0, 0, 8, 0.50);
+      background: rgba(0, 0, 8, 0.40);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
-      border-bottom: 1px solid var(--border);
       z-index: 200;
     }
-    .brand {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 18px;
-      font-weight: 500;
-      letter-spacing: 0.12em;
-      color: var(--accent);
-      text-shadow: 0 0 14px rgba(0,255,255,0.5);
-      text-transform: uppercase;
-    }
-    .header-actions { display: flex; gap: 10px; }
+    .header-left { display: flex; }
+    .header-actions { display: flex; gap: 12px; }
     .icon-btn {
-      width: 36px; height: 36px;
+      width: 64px; height: 64px;
       border: 1px solid var(--border);
-      background: var(--card);
-      border-radius: 8px;
+      background: rgba(0,0,0,0.35);
+      border-radius: 14px;
       display: flex; align-items: center; justify-content: center;
-      cursor: pointer; color: var(--dim); font-size: 15px;
+      cursor: pointer; color: var(--dim); font-size: 24px;
       transition: all 0.2s;
+      backdrop-filter: blur(8px);
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 300;
+      letter-spacing: 0;
     }
     .icon-btn:active { transform: scale(0.93); }
     .icon-btn.active { color: var(--accent3); border-color: var(--border-m); background: rgba(255,0,255,0.08); }
@@ -165,7 +160,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 80px 20px 40px;
+      padding: 100px 20px 40px;
     }
 
     /* ── TIMER DISPLAY ───────────────────────────────────────── */
@@ -870,6 +865,68 @@
     }
     .health-btn.visible { display: block; }
     .health-btn:hover { background: rgba(255,55,95,0.14); }
+    
+    /* ── SETTINGS SECTIONS ───────────────────────────────────── */
+    .settings-section { padding: 4px 0 12px; }
+    .settings-section-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: rgba(0,255,255,0.35);
+      margin-bottom: 12px;
+    }
+    .settings-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(0,255,255,0.12) 30%, rgba(0,255,255,0.12) 70%, transparent);
+      margin: 8px 0 20px;
+    }
+
+    /* ── INFO / FAQ PANEL ────────────────────────────────────── */
+    .info-panel {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: rgba(3, 0, 14, 0.97);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      border-top: 1px solid var(--border);
+      border-radius: 16px 16px 0 0;
+      padding: 20px 24px calc(40px + var(--safe-bot));
+      transform: translateY(100%);
+      transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+      z-index: 300;
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+    .info-panel.open { transform: translateY(0); }
+    .info-drag {
+      width: 32px; height: 3px;
+      background: rgba(0,255,255,0.22);
+      border-radius: 2px;
+      margin: 0 auto 24px;
+    }
+    .info-q {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 8px;
+      margin-top: 24px;
+    }
+    .info-q:first-of-type { margin-top: 0; }
+    .info-a {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      color: rgba(210,255,255,0.78);
+      font-weight: 400;
+    }
+    .info-divider {
+      height: 1px;
+      background: rgba(0,255,255,0.10);
+      margin: 20px 0 0;
+    }
       </style>
 </head>
 <body>
@@ -889,7 +946,9 @@
 
   <!-- HEADER -->
   <header class="header floatui">
-    <div class="brand">Melt</div>
+    <div class="header-left">
+      <div class="icon-btn" id="info-btn" title="About">?</div>
+    </div>
     <div class="header-actions">
       <div class="icon-btn" id="log-btn" title="Session log">◫</div>
       <div class="icon-btn" id="vibrate-toggle" title="Vibrate mode">📳</div>
@@ -992,6 +1051,30 @@
   </div><!-- /main -->
 </div><!-- /app -->
 
+<!-- INFO / FAQ PANEL -->
+<div class="info-panel" id="info-panel">
+  <div class="info-drag"></div>
+
+  <div class="info-q">What is this?</div>
+  <div class="info-a">Melt is a meditation timer built around the Vipassana tradition. Nothing to read, nothing to follow. Set the time, press play, close your eyes. The bell marks the beginning and the end. Everything between is yours.</div>
+  <div class="info-divider"></div>
+
+  <div class="info-q">Why one hour?</div>
+  <div class="info-a">S.N. Goenka's Vipassana tradition recommends two one-hour sittings daily — morning and evening — for students who have completed a 10-day course. The first twenty minutes settle the mind. The middle twenty deepen concentration. The final twenty are where dissolution begins. Shorter sittings are valid. One hour is the threshold where something different becomes possible.</div>
+  <div class="info-divider"></div>
+
+  <div class="info-q">What is Vipassana?</div>
+  <div class="info-a">Vipassana means to see things as they really are. The technique involves observing bodily sensations — without reacting, without craving or aversion. Every sensation arises and passes. This is Anicca — impermanence. The practice is the observation. The insight is in the noticing.</div>
+  <div class="info-divider"></div>
+
+  <div class="info-q">How to sit</div>
+  <div class="info-a">Sit with a straight spine. Eyes closed. Begin by observing the breath at the nostrils — the touch of air, the temperature. When ready, sweep awareness through the body, part by part, top to bottom, bottom to top. Observe. Don't react. When the mind wanders, return. No judgment. Just return.</div>
+  <div class="info-divider"></div>
+
+  <div class="info-q">How to use the app</div>
+  <div class="info-a">Set your duration with the scroll wheel or quick buttons. Press play. The screen will fade — leaving only the image and the time counting down. Move your mouse or touch the screen to bring the controls back. Your sessions are saved in the log (◫). Bell sounds and other settings are in the gear (⚙️).</div>
+</div>
+
 <!-- LOG PANEL -->
 <div class="log-panel" id="log-panel">
   <div class="log-drag"></div>
@@ -1009,6 +1092,66 @@
   <div class="settings-drag"></div>
   <div class="settings-title">Settings</div>
 
+  <!-- DURATION IN SETTINGS -->
+  <div class="settings-section">
+    <div class="settings-section-label">Duration</div>
+    <div class="pills" id="quick-pills-2" style="justify-content:flex-start;margin-bottom:10px">
+      <div class="pill" data-min="5">5 m</div>
+      <div class="pill" data-min="20">20 m</div>
+      <div class="pill" data-min="30">30 m</div>
+      <div class="pill active" data-min="60">1 h</div>
+      <div class="pill" data-min="120">2 h</div>
+    </div>
+    <div class="custom-duration">
+      <input type="number" id="custom-min-2" min="1" max="360" placeholder="—" value="60"/>
+      <label for="custom-min-2">min custom</label>
+    </div>
+  </div>
+
+  <div class="settings-divider"></div>
+
+  <!-- INTERVALS IN SETTINGS -->
+  <div class="settings-section">
+    <div class="settings-section-label">Intervals</div>
+    <div class="interval-row" id="interval-presets">
+      <div class="preset-chip active" data-interval="0">Off</div>
+      <div class="preset-chip" data-interval="5">5m</div>
+      <div class="preset-chip" data-interval="10">10m</div>
+      <div class="preset-chip" data-interval="15">15m</div>
+      <div class="preset-chip" data-interval="custom">Custom…</div>
+    </div>
+    <div class="custom-duration" id="interval-custom-row" style="display:none">
+      <input type="number" id="custom-interval" min="1" max="60" placeholder="—" value="5"/>
+      <label for="custom-interval">min interval</label>
+    </div>
+  </div>
+
+  <div class="settings-divider"></div>
+
+  <!-- SOUNDS IN SETTINGS -->
+  <div class="settings-section">
+    <div class="settings-section-label">Bell Sound</div>
+    <div class="sounds-scroll" id="sounds-scroll">
+      <!-- populated by JS -->
+    </div>
+  </div>
+
+  <div class="settings-divider"></div>
+
+  <!-- PRESETS IN SETTINGS -->
+  <div class="settings-section">
+    <div class="settings-section-label">Saved Presets</div>
+    <div class="presets-scroll" id="presets-scroll">
+      <div class="preset-add" id="btn-save-preset">
+        <span>＋</span>
+        <span>Save</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-divider"></div>
+
+  <div class="settings-section-label" style="margin-bottom:14px">Bell &amp; Session</div>
   <div class="settings-row">
     <div>
       <div class="settings-row-label">Start bell</div>
@@ -1934,8 +2077,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // custom duration
   document.getElementById('custom-min').addEventListener('change', e => {
-    const v = Math.max(1, Math.min(180, parseInt(e.target.value) || 10));
-    if (!state.running) setDuration(v);
+    const v = Math.max(1, Math.min(360, parseInt(e.target.value) || 60));
+    if (!state.running) { setDuration(v); if(window._drumSync) window._drumSync(v); }
+  });
+  document.getElementById('custom-min-2').addEventListener('change', e => {
+    const v = Math.max(1, Math.min(360, parseInt(e.target.value) || 60));
+    if (!state.running) { setDuration(v); if(window._drumSync) window._drumSync(v); }
   });
 
   // interval presets
@@ -1960,7 +2107,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // settings panel
   document.getElementById('settings-btn').addEventListener('click', openSettings);
-  document.getElementById('overlay').addEventListener('click', closeSettings);
 
   // toggles
   makeToggle('toggle-start-bell', 'startBell');
@@ -2009,7 +2155,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadSoundList();
   loadPresets();
 
-  // quick-select pills
+  // quick-select pills (both sets — hero + settings)
   document.querySelectorAll('.pill').forEach(p => {
     p.addEventListener('click', () => {
       if (state.running) return;
@@ -2019,6 +2165,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.querySelectorAll('.pill').forEach(x => x.classList.remove('active'));
       p.classList.add('active');
     });
+  });
+
+  // info panel
+  document.getElementById('info-btn').addEventListener('click', () => {
+    document.getElementById('info-panel').classList.add('open');
+    document.getElementById('overlay').classList.add('visible');
+  });
+  document.getElementById('overlay').addEventListener('click', () => {
+    document.getElementById('info-panel').classList.remove('open');
+    closeLog();
+    closeSettings();
   });
 
   // log panel

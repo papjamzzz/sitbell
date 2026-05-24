@@ -650,7 +650,86 @@
     @media (min-width: 768px) {
       .timer-display { font-size: 110px; }
     }
-  </style>
+
+    /* ── AUTO-HIDE FLOATING UI ───────────────────────────────── */
+    .floatui {
+      transition: opacity 0.9s ease;
+    }
+    body.idle .floatui {
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+
+    /* ── TIME DRUM PICKER ────────────────────────────────────── */
+    .drum-wrap {
+      position: relative;
+      width: 240px;
+      height: 160px;
+      margin: 4px auto 20px;
+      overflow: hidden;
+      cursor: ns-resize;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .drum-wrap.hidden { display: none; }
+    .drum {
+      position: absolute;
+      width: 100%;
+      will-change: transform;
+      transition: transform 0.18s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+    .drum-item {
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 300;
+      color: rgba(0,255,255,0.18);
+      letter-spacing: 0.10em;
+      transition: all 0.18s;
+    }
+    .drum-item.near {
+      font-size: 16px;
+      color: rgba(0,255,255,0.42);
+    }
+    .drum-item.selected {
+      font-size: 32px;
+      font-weight: 300;
+      color: rgba(255,255,255,0.97);
+      text-shadow:
+        0 0 22px rgba(0,255,255,0.65),
+        0 0 50px rgba(0,255,255,0.25),
+        0 2px 6px rgba(0,0,0,0.80);
+    }
+    .drum-highlight {
+      position: absolute;
+      top: 50%; left: 16px; right: 16px;
+      height: 32px;
+      transform: translateY(-50%);
+      border-top: 1px solid rgba(0,255,255,0.22);
+      border-bottom: 1px solid rgba(0,255,255,0.22);
+      pointer-events: none;
+      z-index: 3;
+    }
+    .drum-fade-top {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 56px;
+      background: linear-gradient(to bottom, rgba(0,0,8,0.65) 0%, transparent 100%);
+      pointer-events: none;
+      z-index: 2;
+    }
+    .drum-fade-bot {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 56px;
+      background: linear-gradient(to top, rgba(0,0,8,0.65) 0%, transparent 100%);
+      pointer-events: none;
+      z-index: 2;
+    }
+    </style>
 </head>
 <body>
 
@@ -668,7 +747,7 @@
 <div class="app">
 
   <!-- HEADER -->
-  <header class="header">
+  <header class="header floatui">
     <div class="brand">SitBell</div>
     <div class="header-actions">
       <div class="icon-btn" id="vibrate-toggle" title="Vibrate mode">📳</div>
@@ -681,17 +760,25 @@
 
     <!-- HERO — fullscreen timer + controls -->
     <div class="hero">
-      <!-- TIMER DISPLAY -->
+      <!-- TIMER DISPLAY — always visible -->
       <div class="timer-display-section">
-        <div class="timer-display" id="timer-display">10:00</div>
+        <div class="timer-display" id="timer-display">1:00:00</div>
         <div class="timer-label" id="timer-label">ready</div>
       </div>
 
       <!-- interval progress dots -->
       <div class="interval-dots" id="interval-dots"></div>
 
-      <!-- CONTROLS -->
-      <div class="controls">
+      <!-- TIME DRUM PICKER (floatui — hides when idle) -->
+      <div class="drum-wrap floatui" id="drum-wrap">
+        <div class="drum-fade-top"></div>
+        <div class="drum" id="time-drum"></div>
+        <div class="drum-highlight"></div>
+        <div class="drum-fade-bot"></div>
+      </div>
+
+      <!-- CONTROLS (floatui — hides when idle) -->
+      <div class="controls floatui">
         <button class="btn btn-secondary" id="btn-cancel" title="Cancel">✕</button>
         <button class="btn btn-play" id="btn-play">▶</button>
         <button class="btn btn-secondary" id="btn-restart" title="Restart">↺</button>
@@ -699,23 +786,14 @@
     </div><!-- /hero -->
 
     <!-- CONFIG PANEL — glass sheet -->
-    <div class="config-panel">
+    <div class="config-panel floatui">
 
-    <!-- DURATION -->
+    <!-- DURATION — drum picker is primary; custom input as override -->
     <div class="duration-section">
       <div class="section-label">Duration</div>
-      <div class="preset-row" id="duration-presets">
-        <div class="preset-chip" data-min="5">5m</div>
-        <div class="preset-chip active" data-min="10">10m</div>
-        <div class="preset-chip" data-min="15">15m</div>
-        <div class="preset-chip" data-min="20">20m</div>
-        <div class="preset-chip" data-min="30">30m</div>
-        <div class="preset-chip" data-min="45">45m</div>
-        <div class="preset-chip" data-min="60">60m</div>
-      </div>
       <div class="custom-duration">
-        <input type="number" id="custom-min" min="1" max="180" placeholder="—" value="10"/>
-        <label for="custom-min">min custom</label>
+        <input type="number" id="custom-min" min="1" max="360" placeholder="—" value="60"/>
+        <label for="custom-min">min (override)</label>
       </div>
     </div>
 
@@ -1154,7 +1232,7 @@
 //  STATE
 // ══════════════════════════════════════════════════════
 const state = {
-  durationMin: 10,
+  durationMin: 60,
   intervalMin: 0,
   selectedSound: '__synth__',
   strikes: 1,
@@ -1279,9 +1357,14 @@ function previewSound(filename) {
 //  TIMER CORE
 // ══════════════════════════════════════════════════════
 function formatTime(secs) {
-  const m = Math.floor(secs / 60);
+  const totalMin = Math.floor(secs / 60);
   const s = secs % 60;
-  return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+  if (totalMin >= 60) {
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    return h + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+  }
+  return String(totalMin).padStart(2,'0') + ':' + String(s).padStart(2,'0');
 }
 
 function updateRing(remaining, total) {
@@ -1381,6 +1464,7 @@ function startTimer() {
   state.intervalId = setInterval(tick, 1000);
 
   requestNotificationPermission();
+  document.dispatchEvent(new Event("sitbell:start"));
 }
 
 function pauseTimer() {
@@ -1406,6 +1490,7 @@ function stopTimer(reset = true) {
   state.running = false;
   state.paused = false;
   clearInterval(state.intervalId);
+  document.dispatchEvent(new Event("sitbell:stop"));
   releaseWakeLock();
 
   const display = document.getElementById('timer-display');
@@ -1675,13 +1760,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // duration presets
-  document.querySelectorAll('#duration-presets .preset-chip').forEach(c => {
-    c.addEventListener('click', () => {
-      if (!state.running) setDuration(parseInt(c.dataset.min));
-    });
-  });
-
   // custom duration
   document.getElementById('custom-min').addEventListener('change', e => {
     const v = Math.max(1, Math.min(180, parseInt(e.target.value) || 10));
@@ -1759,6 +1837,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadSoundList();
   loadPresets();
 
+  // floating UI + drum
+  initAutoHide();
+  initDrum();
+
   // register service worker
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/static/sw.js').catch(() => {});
@@ -1766,6 +1848,122 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // PWA install hint: handled by browser prompt automatically
 });
+
+
+// ══════════════════════════════════════════════════════
+//  AUTO-HIDE FLOATING UI
+// ══════════════════════════════════════════════════════
+function initAutoHide() {
+  const HIDE_DELAY = 3200;
+  let timer = null;
+
+  function wake() {
+    document.body.classList.remove('idle');
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      document.body.classList.add('idle');
+    }, HIDE_DELAY);
+  }
+
+  ['mousemove','mousedown','touchstart','touchmove','wheel','keydown','scroll'].forEach(evt => {
+    document.addEventListener(evt, wake, { passive: true });
+  });
+
+  // Show for 5s on load, then hide
+  timer = setTimeout(() => document.body.classList.add('idle'), 5000);
+}
+
+// ══════════════════════════════════════════════════════
+//  TIME DRUM PICKER
+// ══════════════════════════════════════════════════════
+function initDrum() {
+  // Time options in minutes
+  const VALS = [5,10,15,20,25,30,45,60,75,90,105,120,150,180,240];
+  let idx = VALS.indexOf(60); // default 1h
+
+  const drumEl = document.getElementById('time-drum');
+  const wrapEl = document.getElementById('drum-wrap');
+  const ITEM_H = 32;
+  const VISIBLE_H = 160; // drum-wrap height
+
+  function fmt(min) {
+    if (min < 60) return String(min) + ' m';
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    if (m === 0) return h + ' h';
+    return h + ' h ' + String(m).padStart(2,'0');
+  }
+
+  function render(animated) {
+    if (!animated) drumEl.style.transition = 'none';
+    else          drumEl.style.transition = 'transform 0.18s cubic-bezier(0.25,0.46,0.45,0.94)';
+
+    // Rebuild items
+    drumEl.innerHTML = '';
+    VALS.forEach((v, i) => {
+      const el = document.createElement('div');
+      el.className = 'drum-item';
+      const diff = i - idx;
+      if (diff === 0)       el.classList.add('selected');
+      else if (Math.abs(diff) === 1) el.classList.add('near');
+      el.textContent = fmt(v);
+      drumEl.appendChild(el);
+    });
+
+    // Translate so selected item is centered
+    const offset = (VISIBLE_H / 2) - (idx * ITEM_H) - (ITEM_H / 2);
+    drumEl.style.transform = 'translateY(' + offset + 'px)';
+
+    // Update timer if not running
+    if (!state.running) setDuration(VALS[idx]);
+  }
+
+  function nudge(delta) {
+    idx = Math.max(0, Math.min(VALS.length - 1, idx + delta));
+    render(true);
+  }
+
+  // Expose so setDuration can sync drum
+  window._drumSync = function(min) {
+    const i = VALS.indexOf(min);
+    if (i >= 0 && i !== idx) { idx = i; render(false); }
+  };
+
+  // Mouse wheel
+  let wheelBucket = 0;
+  wrapEl.addEventListener('wheel', e => {
+    e.preventDefault();
+    wheelBucket += e.deltaY;
+    if (Math.abs(wheelBucket) >= 30) {
+      nudge(wheelBucket > 0 ? 1 : -1);
+      wheelBucket = 0;
+    }
+  }, { passive: false });
+
+  // Touch drag
+  let ty0 = 0, tyLast = 0, tyAcc = 0;
+  wrapEl.addEventListener('touchstart', e => {
+    ty0 = tyLast = e.touches[0].clientY;
+    tyAcc = 0;
+  }, { passive: true });
+  wrapEl.addEventListener('touchmove', e => {
+    const dy = tyLast - e.touches[0].clientY;
+    tyLast = e.touches[0].clientY;
+    tyAcc += dy;
+    if (Math.abs(tyAcc) >= 20) {
+      nudge(tyAcc > 0 ? 1 : -1);
+      tyAcc = 0;
+    }
+  }, { passive: true });
+
+  // Hide drum when running, show when stopped
+  const origStart = window._onTimerStart || null;
+  document.addEventListener('sitbell:start', () => wrapEl.classList.add('hidden'));
+  document.addEventListener('sitbell:stop',  () => wrapEl.classList.remove('hidden'));
+
+  render(false);
+}
+
 </script>
 </body>
 </html>

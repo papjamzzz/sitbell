@@ -945,7 +945,7 @@
 <div class="app">
 
   <!-- HEADER -->
-  <header class="header floatui">
+  <header class="header">
     <div class="header-left">
       <div class="icon-btn" id="info-btn" title="About">?</div>
     </div>
@@ -970,14 +970,6 @@
       <!-- interval progress dots -->
       <div class="interval-dots" id="interval-dots"></div>
 
-      <!-- QUICK-SELECT PILLS (floatui) -->
-      <div class="pills floatui" id="quick-pills">
-        <div class="pill" data-min="5">5 m</div>
-        <div class="pill" data-min="20">20 m</div>
-        <div class="pill" data-min="30">30 m</div>
-        <div class="pill active" data-min="60">1 h</div>
-        <div class="pill" data-min="120">2 h</div>
-      </div>
 
       <!-- TIME DRUM PICKER (floatui — hides when idle) -->
       <div class="drum-wrap floatui" id="drum-wrap">
@@ -987,8 +979,8 @@
         <div class="drum-fade-bot"></div>
       </div>
 
-      <!-- CONTROLS (floatui — hides when idle) -->
-      <div class="controls floatui">
+      <!-- CONTROLS — always visible and clickable -->
+      <div class="controls">
         <button class="btn btn-secondary" id="btn-cancel" title="Cancel">✕</button>
         <button class="btn btn-play" id="btn-play">▶</button>
         <button class="btn btn-secondary" id="btn-restart" title="Restart">↺</button>

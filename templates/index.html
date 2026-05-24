@@ -964,20 +964,12 @@
       <!-- TIMER DISPLAY — always visible -->
       <div class="timer-display-section">
         <div class="timer-display" id="timer-display">1:00:00</div>
-        <div class="timer-label" id="timer-label">ready</div>
+        <div class="timer-label" id="timer-label"></div>
       </div>
 
       <!-- interval progress dots -->
       <div class="interval-dots" id="interval-dots"></div>
 
-
-      <!-- TIME DRUM PICKER (floatui — hides when idle) -->
-      <div class="drum-wrap floatui" id="drum-wrap">
-        <div class="drum-fade-top"></div>
-        <div class="drum" id="time-drum"></div>
-        <div class="drum-highlight"></div>
-        <div class="drum-fade-bot"></div>
-      </div>
 
       <!-- CONTROLS — always visible and clickable -->
       <div class="controls">
@@ -986,59 +978,6 @@
         <button class="btn btn-secondary" id="btn-restart" title="Restart">↺</button>
       </div>
     </div><!-- /hero -->
-
-    <!-- CONFIG PANEL — glass sheet -->
-    <div class="config-panel floatui">
-
-    <!-- DURATION — drum picker is primary; custom input as override -->
-    <div class="duration-section">
-      <div class="section-label">Duration</div>
-      <div class="custom-duration">
-        <input type="number" id="custom-min" min="1" max="360" placeholder="—" value="60"/>
-        <label for="custom-min">min (override)</label>
-      </div>
-    </div>
-
-    <div class="divider"></div>
-
-    <!-- INTERVALS -->
-    <div class="intervals-section">
-      <div class="section-label">Intervals</div>
-      <div class="interval-row" id="interval-presets">
-        <div class="preset-chip active" data-interval="0">Off</div>
-        <div class="preset-chip" data-interval="5">5m</div>
-        <div class="preset-chip" data-interval="10">10m</div>
-        <div class="preset-chip" data-interval="15">15m</div>
-        <div class="preset-chip" data-interval="custom">Custom…</div>
-      </div>
-      <div class="custom-duration" id="interval-custom-row" style="display:none">
-        <input type="number" id="custom-interval" min="1" max="60" placeholder="—" value="5"/>
-        <label for="custom-interval">min interval</label>
-      </div>
-    </div>
-
-    <div class="divider"></div>
-
-    <!-- SOUNDS -->
-    <div class="sounds-section">
-      <div class="section-label">Bell Sound</div>
-      <div class="sounds-scroll" id="sounds-scroll">
-        <!-- populated by JS -->
-      </div>
-    </div>
-
-    <div class="divider"></div>
-
-    <!-- SAVED PRESETS -->
-    <div class="presets-section">
-      <div class="section-label">Saved Presets</div>
-      <div class="presets-scroll" id="presets-scroll">
-        <div class="preset-add" id="btn-save-preset">
-          <span>＋</span>
-          <span>Save</span>
-        </div>
-      </div>
-    </div>
 
   </div><!-- /main -->
 </div><!-- /app -->
@@ -1801,7 +1740,7 @@ function stopTimer(reset = true) {
   if (reset) {
     state.remainingSecs = state.durationMin * 60;
     display.textContent = formatTime(state.durationMin * 60);
-    document.getElementById('timer-label').textContent = 'ready';
+    document.getElementById('timer-label').textContent = '';
     if (window.iceScene) window.iceScene.reset();
     document.getElementById('interval-dots').innerHTML = '';
   }
@@ -1979,7 +1918,7 @@ function deletePreset(id) {
 // ══════════════════════════════════════════════════════
 function setDuration(min) {
   state.durationMin = min;
-  document.getElementById('custom-min').value = min;
+  const el2 = document.getElementById('custom-min-2'); if (el2) el2.value = min;
   document.querySelectorAll('#duration-presets .preset-chip').forEach(c => {
     c.classList.toggle('active', parseInt(c.dataset.min) === min);
   });
@@ -2068,10 +2007,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // custom duration
-  document.getElementById('custom-min').addEventListener('change', e => {
-    const v = Math.max(1, Math.min(360, parseInt(e.target.value) || 60));
-    if (!state.running) { setDuration(v); if(window._drumSync) window._drumSync(v); }
-  });
   document.getElementById('custom-min-2').addEventListener('change', e => {
     const v = Math.max(1, Math.min(360, parseInt(e.target.value) || 60));
     if (!state.running) { setDuration(v); if(window._drumSync) window._drumSync(v); }
@@ -2299,6 +2234,7 @@ function initDrum() {
 
   const drumEl = document.getElementById('time-drum');
   const wrapEl = document.getElementById('drum-wrap');
+  if (!wrapEl || !drumEl) return;
   const ITEM_H = 32;
   const VISIBLE_H = 160; // drum-wrap height
 

@@ -50,11 +50,14 @@ cd ~/sitbell && make run
 - [x] Saved presets (localStorage), long-press to delete
 - [x] Wake Lock API — screen stays on during session
 - [x] Notifications API for lock screen progress
+- [x] Replaced Three.js WebGL ice cube with real melting ice video (Pexels Melt.mov → melt.mp4)
+- [x] Hypercolor futuristic ice effect — hue-rotate+saturate filter, neon grain, CRT scanlines, glitch bands, pixel corruption, neon scratch lines, scan sweep, HUD brackets, chromatic aberration, digital tape cuts, dynamic flicker
 
 ## What's Next
 - [ ] Source and drop real bell sounds into ~/Desktop/timers change
 - [ ] Goenka Vipassana AI companion (separate session)
-- [ ] iOS home screen icon (192x512 PNG needed in static/icons/)
+- [ ] iOS home screen icon (192x192 + 512x512 PNG needed in static/icons/)
+- [ ] Git LFS or re-compress melt.mp4 (currently 57MB — GitHub warned about large file)
 
 ## Key Technical Decisions
 - localhost only (host=127.0.0.1)
@@ -63,11 +66,13 @@ cd ~/sitbell && make run
 - PWA manifest + service worker for "Add to Home Screen" install
 
 ## Last Session
-Shipping v1 ice cube centerpiece. View-space matcap shader — Fresnel rim,
-three specular lights in view space, correct coordinate spaces. Arc:
-pristine crystal outline → condensation droplets (progress 12%) → frost
-builds (roughness uniform) → cracks (38-75%) → shrinks into puddle. Timer,
-sounds, presets, wake lock, service worker all complete.
+Replaced Three.js with real ice video (Pexels Melt.mov → melt.mp4 via ffmpeg).
+Built hypercolor futuristic overlay: hue-rotate(195deg) saturate(4) filter
+shifts ice to electric cyan/magenta. Canvas engine: neon grain, CRT scanlines,
+glitch bands, pixel corruption, neon scratch lines with glow, cyan→purple scan
+sweep, HUD corner brackets, digital tape cuts, chromatic aberration (chroma-r/b
+divs with color-dodge blend), dynamic flicker modulating saturate+contrast.
+Public API window.iceScene.setProgress(p) preserved. Committed + pushed.
 
 ---
 *Last updated: 2026-05-23*

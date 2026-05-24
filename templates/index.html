@@ -657,6 +657,68 @@
       pointer-events: none !important;
     }
 
+    /* ── SESSION MODE — timer drifts to top-left ─────────────── */
+    .timer-display-section {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -75%);
+      transform-origin: top left;
+      z-index: 150;
+      text-align: center;
+      pointer-events: none;
+      transition:
+        top      4.5s cubic-bezier(0.22, 0.61, 0.36, 1),
+        left     4.5s cubic-bezier(0.22, 0.61, 0.36, 1),
+        transform 4.5s cubic-bezier(0.22, 0.61, 0.36, 1);
+    }
+
+    body.in-session .timer-display-section {
+      top: 84px;
+      left: 20px;
+      transform: translate(0, 0) scale(0.75);
+    }
+
+    @keyframes meltGlowIn {
+      from {
+        text-shadow:
+          0 0 30px rgba(0,255,255,0.40),
+          0 0 60px rgba(0,255,255,0.15),
+          0 2px 6px rgba(0,0,0,0.85);
+      }
+      to {
+        text-shadow:
+          0 0 50px rgba(0,255,255,1),
+          0 0 100px rgba(0,255,255,0.60),
+          0 0 200px rgba(0,255,255,0.28),
+          0 2px 6px rgba(0,0,0,0.85);
+      }
+    }
+
+    body.in-session .timer-display {
+      animation: meltGlowIn 3.5s ease-out forwards;
+    }
+
+    body.in-session .timer-label {
+      opacity: 0;
+      transition: opacity 1.5s ease;
+    }
+
+    body.in-session .interval-dots {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 1.2s ease;
+    }
+
+    .header {
+      transition: opacity 0.8s ease;
+    }
+
+    body.in-session.idle .header {
+      opacity: 0;
+      pointer-events: none;
+    }
+
     /* ── TIME DRUM PICKER ────────────────────────────────────── */
     .drum-wrap {
       position: relative;
@@ -2314,6 +2376,10 @@ function initDrum() {
   const origStart = window._onTimerStart || null;
   document.addEventListener('sitbell:start', () => wrapEl.classList.add('hidden'));
   document.addEventListener('sitbell:stop',  () => wrapEl.classList.remove('hidden'));
+
+  // Session mode: drift timer to top-left, everything else melts away
+  document.addEventListener('sitbell:start', () => document.body.classList.add('in-session'));
+  document.addEventListener('sitbell:stop',  () => document.body.classList.remove('in-session'));
 
   render(false);
 }

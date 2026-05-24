@@ -63,8 +63,11 @@ cd ~/sitbell && make run
 - PWA manifest + service worker for "Add to Home Screen" install
 
 ## Last Session
-Built full v1 — timer core complete, PWA ready, synthesized bell works immediately.
-Drop .wav/.aif files into ~/Desktop/timers change to populate the sound library.
+Shipping v1 ice cube centerpiece. View-space matcap shader — Fresnel rim,
+three specular lights in view space, correct coordinate spaces. Arc:
+pristine crystal outline → condensation droplets (progress 12%) → frost
+builds (roughness uniform) → cracks (38-75%) → shrinks into puddle. Timer,
+sounds, presets, wake lock, service worker all complete.
 
 ---
 *Last updated: 2026-05-23*

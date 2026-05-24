@@ -11,7 +11,6 @@
   <link rel="manifest" href="/static/manifest.json"/>
   <link rel="apple-touch-icon" href="/static/icons/icon-192.png"/>
   <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Noto+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <style>
     :root {
       --bg:       #0c0905;
@@ -120,12 +119,30 @@
       pointer-events: none;
       z-index: 0;
     }
-    #ice-canvas {
-      display: block;
-      width: 100% !important;
-      height: 100% !important;
-      position: relative;
+    #ice-video {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      filter: brightness(0.62) contrast(1.25) saturate(0.45) sepia(0.18);
       z-index: 1;
+    }
+    #vintage-overlay {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 3;
+      pointer-events: none;
+    }
+    .vignette {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 50% 50%,
+        transparent 40%,
+        rgba(0,0,0,0.55) 75%,
+        rgba(0,0,0,0.88) 100%);
+      z-index: 2;
+      pointer-events: none;
     }
 
     /* ─── TIMER DISPLAY (below ice) ─── */
@@ -533,9 +550,13 @@
   <!-- MAIN -->
   <div class="main" id="main-scroll">
 
-    <!-- 3D ICE CENTERPIECE -->
+    <!-- VINTAGE ICE VIDEO -->
     <div class="ice-section">
-      <canvas id="ice-canvas"></canvas>
+      <video id="ice-video" autoplay muted loop playsinline>
+        <source src="/static/melt.mp4" type="video/mp4">
+      </video>
+      <canvas id="vintage-overlay"></canvas>
+      <div class="vignette"></div>
     </div>
 
     <!-- TIMER DISPLAY -->
@@ -690,338 +711,183 @@
 
 <script>
 // ══════════════════════════════════════════════════════
-//  ICE SCENE — Three.js
+//  VINTAGE ICE VIDEO
 // ══════════════════════════════════════════════════════
-(function initIceScene() {
-  if (typeof THREE === 'undefined') return;
+(function initVintageIce() {
 
-  const container = document.getElementById('ice-canvas').parentElement;
-  const canvas    = document.getElementById('ice-canvas');
+  const video   = document.getElementById('ice-video');
+  const canvas  = document.getElementById('vintage-overlay');
+  const ctx     = canvas.getContext('2d');
 
-  // ── Renderer ──────────────────────────────────────
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-  renderer.setClearColor(0x000000, 0); // transparent — CSS background shows through
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
+  let progress  = 0;
+
+  // ── Resize canvas to match container ─────────────
   function resize() {
-    const w = container.offsetWidth, h = container.offsetHeight || 300;
-    renderer.setSize(w, h, false);
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
+    canvas.width  = canvas.offsetWidth  || 400;
+    canvas.height = canvas.offsetHeight || 300;
   }
-
-  // ── Scene & Camera ────────────────────────────────
-  const scene  = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
-  camera.position.set(0, 0.6, 5.5);
-  camera.lookAt(0, 0, 0);
-
-  // ── Lighting ──────────────────────────────────────
-  scene.add(new THREE.AmbientLight(0xc8dcf0, 1.4));
-
-  const key = new THREE.DirectionalLight(0xfff8ee, 4.0);
-  key.position.set(4, 7, 3);
-  key.castShadow = true;
-  key.shadow.mapSize.set(1024, 1024);
-  key.shadow.camera.near = 1; key.shadow.camera.far = 20;
-  key.shadow.camera.left = key.shadow.camera.bottom = -3;
-  key.shadow.camera.right = key.shadow.camera.top = 3;
-  scene.add(key);
-
-  const rim = new THREE.DirectionalLight(0x7098d8, 2.0);
-  rim.position.set(-4, 2, -5);
-  scene.add(rim);
-
-  const fill = new THREE.DirectionalLight(0xffeedd, 1.5);
-  fill.position.set(0, -2, 4);
-  scene.add(fill);
-
-  const under = new THREE.PointLight(0xd0e8ff, 1.2, 8);
-  under.position.set(0, -1.5, 1);
-  scene.add(under);
-
-  // ── Environment (simple bright spots for reflections) ─
-  const envScene = new THREE.Scene();
-  // Bright light probes for sharp reflections
-  [
-    [0xfff8f0, 5, 10,  3, 3.5],
-    [0xffffff, -1,  8,  6, 2.5],
-    [0xc0d8ff, -7,  3, -6, 2.0],
-    [0xffeecc,  3, -3,  8, 1.5],
-    [0xd8f0ff,  0,  2, -8, 1.8],
-  ].forEach(([col, x, y, z, r]) => {
-    const m = new THREE.Mesh(
-      new THREE.SphereGeometry(r, 10, 10),
-      new THREE.MeshBasicMaterial({ color: col })
-    );
-    m.position.set(x, y, z);
-    envScene.add(m);
-  });
-  envScene.add(new THREE.Mesh(
-    new THREE.SphereGeometry(50, 16, 16),
-    new THREE.MeshBasicMaterial({ color: 0x0e0c10, side: THREE.BackSide })
-  ));
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  pmrem.compileEquirectangularShader();
-  const envMap = pmrem.fromScene(envScene).texture;
-  scene.environment = envMap;
-  pmrem.dispose();
-
-  // ── Ice Cube Geometry ─────────────────────────────
-  const SEGS = 22;
-  const cubeGeo = new THREE.BoxGeometry(1.7, 1.7, 1.7, SEGS, SEGS, SEGS);
-  const origPos = new Float32Array(cubeGeo.attributes.position.array);
-
-  // View-space matcap ice shader — Fresnel and specular in view space = always correct
-  const iceMat = new THREE.ShaderMaterial({
-    uniforms: {
-      uColor:    { value: new THREE.Color(0.70, 0.90, 1.0) },
-      uOpacity:  { value: 1.0 },
-      uRoughness:{ value: 0.0 },
-    },
-    vertexShader: `
-      varying vec3  vNormalView;
-      varying vec3  vWorldPos;
-      void main() {
-        vec4 worldPos = modelMatrix * vec4(position, 1.0);
-        vWorldPos     = worldPos.xyz;
-        // normalMatrix correctly transforms normals to view space
-        vNormalView   = normalize(normalMatrix * normal);
-        gl_Position   = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      }
-    `,
-    fragmentShader: `
-      uniform vec3  uColor;
-      uniform float uOpacity;
-      uniform float uRoughness;
-      varying vec3  vNormalView;
-      varying vec3  vWorldPos;
-      void main() {
-        vec3  N = normalize(vNormalView);
-        // Fresnel: NdotZ because camera looks along -Z in view space
-        float NdotZ  = abs(N.z);
-        float fresnel = pow(1.0 - NdotZ, 2.8);
-        // Matcap specular in view space — always hits the cube correctly
-        float s1 = pow(max(0.0, dot(N, normalize(vec3( 0.5,  0.7,  0.5)))), 22.0) * 1.4;
-        float s2 = pow(max(0.0, dot(N, normalize(vec3(-0.4, -0.2,  0.6)))), 14.0) * 0.65;
-        float s3 = pow(max(0.0, dot(N, normalize(vec3( 0.0,  0.2,  1.0)))), 10.0) * 0.50;
-        float spec = s1 + s2 + s3;
-        // Frost / condensation hash
-        float frost = uRoughness * (fract(sin(dot(vWorldPos.xy,
-                      vec2(127.1, 311.7))) * 43758.5) * 0.5 + 0.5);
-        if (gl_FrontFacing) {
-          vec3  col   = mix(uColor, vec3(1.0),
-                            fresnel * 0.80 + spec * 0.80 + frost * 0.35);
-          float alpha = uOpacity * (0.05 + fresnel * 0.80
-                                         + spec    * 0.12
-                                         + frost   * 0.20);
-          gl_FragColor = vec4(col, clamp(alpha, 0.0, 1.0));
-        } else {
-          // Back faces: pristine ice = barely visible; build frost/opacity with progress
-          vec3  iceBlue  = mix(uColor, vec3(0.92, 0.97, 1.0),
-                               frost * 0.35 * uRoughness);
-          float backAlpha = uOpacity * (0.01 + uRoughness * 0.26 + frost * 0.07);
-          gl_FragColor = vec4(iceBlue, clamp(backAlpha, 0.0, 1.0));
-        }
-      }
-    `,
-    transparent: true,
-    side: THREE.DoubleSide,
-    depthWrite: false,
-  });
-
-
-  const iceMesh = new THREE.Mesh(cubeGeo, iceMat);
-  iceMesh.castShadow   = true;
-  iceMesh.receiveShadow = false;
-  iceMesh.position.y   = 0.1;
-  iceMesh.rotation.y   = Math.PI * 0.2;
-  scene.add(iceMesh);
-
-  // Inner glow — subtle icy core, barely visible at start, builds with frost
-  const innerGlow = new THREE.Mesh(
-    new THREE.BoxGeometry(1.62, 1.62, 1.62),
-    new THREE.MeshBasicMaterial({
-      color: new THREE.Color(0.55, 0.80, 1.0),
-      transparent: true, opacity: 0.02, side: THREE.BackSide,
-    })
-  );
-  iceMesh.add(innerGlow);
-
-  // ── Melt Puddle ───────────────────────────────────
-  const puddleGeo = new THREE.CircleGeometry(1.4, 80);
-  const puddleMat = new THREE.MeshPhysicalMaterial({
-    color:          new THREE.Color(0.65, 0.82, 1.0),
-    metalness:      0.0,
-    roughness:      0.0,
-    transparent:    true,
-    opacity:        0.0,
-    envMapIntensity: 2.5,
-  });
-  const puddle = new THREE.Mesh(puddleGeo, puddleMat);
-  puddle.rotation.x = -Math.PI / 2;
-  puddle.position.y = -0.84;
-  scene.add(puddle);
-
-  // ── Floor shadow receiver ─────────────────────────
-  const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(20, 20),
-    new THREE.ShadowMaterial({ opacity: 0.25 })
-  );
-  floor.rotation.x = -Math.PI / 2;
-  floor.position.y = -0.85;
-  floor.receiveShadow = true;
-  scene.add(floor);
-
-  // ── Edge highlights — crystalline ice look ────────
-  // Primary bright edges
-  const edgeGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(1.7, 1.7, 1.7));
-  const edgeMat = new THREE.LineBasicMaterial({
-    color: 0xf0f8ff, transparent: true, opacity: 1.0,
-  });
-  const edgeLines = new THREE.LineSegments(edgeGeo, edgeMat);
-  iceMesh.add(edgeLines);
-
-  // Slightly offset glow layer for soft halo on edges
-  const edgeGlowGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(1.72, 1.72, 1.72));
-  const edgeGlowMat = new THREE.LineBasicMaterial({
-    color: 0xaad4ff, transparent: true, opacity: 0.35,
-  });
-  iceMesh.add(new THREE.LineSegments(edgeGlowGeo, edgeGlowMat));
-
-  // ── Condensation droplets ─────────────────────────
-  const DROP_COUNT = 80;
-  const droplets = [];
-  const dropGeo  = new THREE.SphereGeometry(0.018, 6, 6);
-  for (let i = 0; i < DROP_COUNT; i++) {
-    const mat = new THREE.MeshPhysicalMaterial({
-      color: 0xd8eeff, transparent: true, opacity: 0,
-      roughness: 0.05, transmission: 0.6,
-    });
-    const d = new THREE.Mesh(dropGeo, mat);
-    // Place on a random face of the cube surface
-    const face = Math.floor(Math.random() * 6);
-    const u = (Math.random() - 0.5) * 1.6;
-    const v = (Math.random() - 0.5) * 1.6;
-    const s = 0.86;
-    const positions = [
-      [s, u, v], [-s, u, v],
-      [u, s, v], [u, -s, v],
-      [u, v, s], [u, v, -s],
-    ];
-    const [px, py, pz] = positions[face];
-    d.position.set(px, py, pz);
-    d.userData.baseY = py;
-    d.userData.face  = face;
-    droplets.push(d);
-    iceMesh.add(d); // children of iceMesh so they rotate with it
-  }
-
-  // ── Crack lines (thin box edges that fade in) ─────
-  const crackGroup = new THREE.Group();
-  const crackMat   = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 });
-  for (let i = 0; i < 12; i++) {
-    const pts = [];
-    const x0 = (Math.random() - 0.5) * 1.6, y0 = (Math.random() - 0.5) * 1.6, z0 = (Math.random() - 0.5) * 1.6;
-    pts.push(new THREE.Vector3(x0, y0, z0));
-    pts.push(new THREE.Vector3(x0 + (Math.random()-0.5)*0.6, y0 + (Math.random()-0.5)*0.6, z0 + (Math.random()-0.5)*0.6));
-    const cg = new THREE.BufferGeometry().setFromPoints(pts);
-    crackGroup.add(new THREE.Line(cg, crackMat.clone()));
-  }
-  iceMesh.add(crackGroup);
-
-  // ── State & animation ─────────────────────────────
-  let progress = 0;
-  let rotY     = Math.PI * 0.2;
-
-  function updateGeometry(p) {
-    const pos = cubeGeo.attributes.position;
-    for (let i = 0; i < pos.count; i++) {
-      const ox = origPos[i * 3];
-      const oy = origPos[i * 3 + 1];
-      const oz = origPos[i * 3 + 2];
-
-      // Normalized height 0=bottom 1=top
-      const yN = (oy + 0.85) / 1.7;
-
-      // Top sags; bottom spreads
-      const sagY   = oy - p * 0.55 * yN;
-      const spread = 1.0 + p * 0.75 * Math.pow(1.0 - yN, 1.5);
-
-      // Irregular fracture noise — deterministic per vertex
-      const n = p * 0.07;
-      const nx = Math.sin(ox * 11.3 + oz * 4.7 + oy * 3.1) * n;
-      const nz = Math.cos(oz *  9.1 + oy * 6.3 + ox * 2.9) * n;
-      const ny = Math.sin(ox *  7.4 + oz * 8.2)             * n * 0.4;
-
-      pos.setXYZ(i, ox * spread + nx, sagY + ny, oz * spread + nz);
-    }
-    pos.needsUpdate = true;
-    cubeGeo.computeVertexNormals();
-  }
-
-  function animate() {
-    requestAnimationFrame(animate);
-
-    // Rotation — slows as it dissolves
-    rotY        += 0.0035 * (1 - progress * 0.7);
-    iceMesh.rotation.y = rotY;
-
-    // ── Material evolution ─────────────────────────
-    // Start: glassy crystalline  →  End: frosted, milky, dissolving
-    iceMat.uniforms.uRoughness.value = progress * 0.52;
-    // Keep full opacity until 70%, then fade out as puddle takes over
-    iceMat.uniforms.uOpacity.value = progress > 0.70
-      ? Math.max(0, 1.0 - (progress - 0.70) / 0.30)
-      : 1.0;
-    // Color shifts slightly milkier as frost forms
-    iceMat.uniforms.uColor.value.setRGB(
-      Math.min(1, 0.70 + progress * 0.26),
-      Math.min(1, 0.90 + progress * 0.08),
-      1.0
-    );
-    // Inner glow: near-zero at start, builds with frost, fades at end
-    innerGlow.material.opacity = progress < 0.70
-      ? 0.02 + progress * 0.14
-      : Math.max(0, 0.02 + 0.70 * 0.14 - (progress - 0.70) * 0.60);
-    // Edge lines soften as ice melts
-    edgeMat.opacity = Math.max(0, 0.9 - progress * 1.1);
-
-    // ── Condensation droplets ──────────────────────
-    const dropOpacity = Math.max(0, Math.min(0.75, (progress - 0.12) * 5));
-    droplets.forEach(d => { d.material.opacity = dropOpacity; });
-
-    // ── Cracks fade in 40–75% ──────────────────────
-    const crackOp = Math.max(0, Math.min(0.55, (progress - 0.38) * 3.5));
-    crackGroup.children.forEach(c => { c.material.opacity = crackOp; });
-
-    // ── Geometry deform ────────────────────────────
-    if (progress > 0.08) updateGeometry(Math.max(0, progress - 0.05));
-
-    // Shrink overall (cube shrinks as puddle grows)
-    const sc = 1.0 - progress * 0.42;
-    iceMesh.scale.setScalar(sc);
-
-    // ── Puddle ─────────────────────────────────────
-    puddleMat.opacity = Math.max(0, (progress - 0.25) * 0.85);
-    const ps = 1.0 + Math.max(0, progress - 0.25) * 2.8;
-    puddle.scale.set(ps, ps, 1);
-
-    renderer.render(scene, camera);
-  }
-
   resize();
-  animate();
   window.addEventListener('resize', resize);
 
-  // ── Public API ────────────────────────────────────
+  // ── Vintage state ────────────────────────────────
+  let flickerVal    = 1;
+  let jitterX       = 0;
+  let jitterY       = 0;
+  let cutTimer      = 0;
+  let cutActive     = false;
+  let cutFrames     = 0;
+  let scratchX      = -1;
+  let scratchLife   = 0;
+  let burnActive    = false;
+  let burnAlpha     = 0;
+  let nextCut       = 180 + Math.random() * 300;  // frames until next tape cut
+  let nextScratch   = 60  + Math.random() * 120;
+
+  // ── Grain buffer ─────────────────────────────────
+  function drawGrain() {
+    const w = canvas.width, h = canvas.height;
+    const imageData = ctx.createImageData(w, h);
+    const d = imageData.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const v = (Math.random() * 80) | 0;
+      d[i] = d[i+1] = d[i+2] = v;
+      d[i+3] = 28 + (Math.random() * 18) | 0;
+    }
+    ctx.putImageData(imageData, 0, 0);
+  }
+
+  // ── Scanlines ────────────────────────────────────
+  function drawScanlines() {
+    const w = canvas.width, h = canvas.height;
+    ctx.fillStyle = 'rgba(0,0,0,0.10)';
+    for (let y = 0; y < h; y += 3) {
+      ctx.fillRect(0, y, w, 1);
+    }
+  }
+
+  // ── Film scratch ─────────────────────────────────
+  function drawScratch() {
+    if (scratchLife <= 0) return;
+    const w = canvas.width, h = canvas.height;
+    const alpha = Math.min(1, scratchLife / 4) * 0.7;
+    ctx.strokeStyle = `rgba(255,255,220,${alpha})`;
+    ctx.lineWidth = Math.random() < 0.3 ? 2 : 1;
+    ctx.beginPath();
+    ctx.moveTo(scratchX, 0);
+    // wobbly scratch line
+    for (let y = 0; y < h; y += 8) {
+      ctx.lineTo(scratchX + (Math.random() - 0.5) * 2, y);
+    }
+    ctx.stroke();
+    scratchLife--;
+  }
+
+  // ── Tape burn / frame edge ─────────────────────────
+  function drawBurn() {
+    if (!burnActive) return;
+    const w = canvas.width, h = canvas.height;
+    const g = ctx.createLinearGradient(0, 0, 0, h * 0.15);
+    g.addColorStop(0,   `rgba(255,220,100,${burnAlpha * 0.9})`);
+    g.addColorStop(0.4, `rgba(200,120,30,${burnAlpha  * 0.5})`);
+    g.addColorStop(1,   'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h * 0.15);
+    burnAlpha -= 0.06;
+    if (burnAlpha <= 0) burnActive = false;
+  }
+
+  // ── Tape cut flash ──────────────────────────────
+  function drawCut() {
+    if (!cutActive) return;
+    const w = canvas.width, h = canvas.height;
+    ctx.fillStyle = cutFrames > 1
+      ? `rgba(255,255,255,${0.85 - cutFrames * 0.25})`
+      : `rgba(0,0,0,0.6)`;
+    ctx.fillRect(0, 0, w, h);
+    cutFrames--;
+    if (cutFrames <= 0) {
+      cutActive = false;
+      // tiny video seek jump for authenticity
+      if (video.duration) {
+        const jump = (Math.random() - 0.5) * 1.2;
+        video.currentTime = Math.max(0, Math.min(video.duration - 0.1,
+          (video.currentTime || 0) + jump));
+      }
+    }
+  }
+
+  // ── Jitter ───────────────────────────────────────
+  function updateJitter() {
+    // Drift toward zero
+    jitterX *= 0.7;
+    jitterY *= 0.7;
+    if (Math.abs(jitterX) < 0.1) jitterX = 0;
+    if (Math.abs(jitterY) < 0.1) jitterY = 0;
+    video.style.transform = `translate(${jitterX}px,${jitterY}px)`;
+  }
+
+  // ── Flicker ──────────────────────────────────────
+  function updateFlicker() {
+    const target = 0.92 + Math.random() * 0.16;
+    flickerVal = flickerVal * 0.85 + target * 0.15;
+    // Bake flicker into the video CSS filter brightness
+    const b = (0.62 * flickerVal).toFixed(3);
+    video.style.filter = `brightness(${b}) contrast(1.25) saturate(0.45) sepia(0.18)`;
+  }
+
+  // ── Main loop ─────────────────────────────────────
+  let frame = 0;
+  function animate() {
+    requestAnimationFrame(animate);
+    frame++;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Decide tape cut
+    if (!cutActive) {
+      nextCut--;
+      if (nextCut <= 0) {
+        cutActive  = true;
+        cutFrames  = 2 + (Math.random() < 0.3 ? 1 : 0);
+        nextCut    = 200 + Math.random() * 400;
+        // jitter on cut
+        jitterX    = (Math.random() - 0.5) * 8;
+        jitterY    = (Math.random() - 0.5) * 4;
+        // film burn sometimes
+        if (Math.random() < 0.45) { burnActive = true; burnAlpha = 0.7; }
+      }
+    }
+
+    // Decide scratch
+    if (scratchLife <= 0) {
+      nextScratch--;
+      if (nextScratch <= 0) {
+        scratchX    = 20 + Math.random() * (canvas.width - 40);
+        scratchLife = 3 + Math.floor(Math.random() * 8);
+        nextScratch = 90 + Math.random() * 180;
+      }
+    }
+
+    updateFlicker();
+    updateJitter();
+
+    drawGrain();
+    drawScanlines();
+    drawScratch();
+    drawBurn();
+    drawCut();
+  }
+
+  animate();
+
+  // ── Public API (keep same interface as Three.js version) ──
   window.iceScene = {
     setProgress(p) { progress = Math.max(0, Math.min(1, p)); },
-    reset()        { progress = 0; rotY = Math.PI * 0.2; }
+    reset()        { progress = 0; }
   };
 })();
 </script>
+
 
 <script>
 // ══════════════════════════════════════════════════════

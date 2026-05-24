@@ -106,16 +106,19 @@
       width: 100%;
       height: 300px;
       overflow: hidden;
-      background: radial-gradient(ellipse at 50% 38%, #0d1525 0%, #060810 55%, #040508 100%);
+      background: #000;
+      box-shadow: inset 0 0 60px rgba(0,255,255,0.07),
+                  inset 0 0 120px rgba(180,0,255,0.05);
     }
-    /* cold-light aura behind the cube */
+    /* neon halo behind video */
     .ice-section::before {
       content: '';
       position: absolute;
-      top: 38%; left: 50%;
-      transform: translate(-50%, -50%);
-      width: 260px; height: 220px;
-      background: radial-gradient(ellipse, rgba(90,160,255,0.10) 0%, rgba(60,120,220,0.04) 50%, transparent 72%);
+      inset: 0;
+      background: radial-gradient(ellipse at 50% 45%,
+        rgba(0,255,255,0.06) 0%,
+        rgba(160,0,255,0.04) 45%,
+        transparent 72%);
       pointer-events: none;
       z-index: 0;
     }
@@ -124,8 +127,9 @@
       top: 0; left: 0;
       width: 100%; height: 100%;
       object-fit: cover;
-      filter: brightness(0.62) contrast(1.25) saturate(0.45) sepia(0.18);
+      filter: hue-rotate(195deg) saturate(4) contrast(1.6) brightness(0.65);
       z-index: 1;
+      transition: filter 0.05s;
     }
     #vintage-overlay {
       position: absolute;
@@ -133,16 +137,25 @@
       width: 100%; height: 100%;
       z-index: 3;
       pointer-events: none;
+      mix-blend-mode: screen;
     }
     .vignette {
       position: absolute;
       inset: 0;
       background: radial-gradient(ellipse at 50% 50%,
-        transparent 40%,
-        rgba(0,0,0,0.55) 75%,
-        rgba(0,0,0,0.88) 100%);
+        transparent 35%,
+        rgba(10,0,30,0.55) 68%,
+        rgba(0,0,10,0.92) 100%);
       z-index: 2;
       pointer-events: none;
+    }
+    /* chroma fringe layers */
+    .chroma-r, .chroma-b {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      opacity: 0;
     }
 
     /* ─── TIMER DISPLAY (below ice) ─── */
@@ -550,13 +563,15 @@
   <!-- MAIN -->
   <div class="main" id="main-scroll">
 
-    <!-- VINTAGE ICE VIDEO -->
-    <div class="ice-section">
+    <!-- HYPERCOLOR ICE VIDEO -->
+    <div class="ice-section" id="ice-section">
       <video id="ice-video" autoplay muted loop playsinline>
         <source src="/static/melt.mp4" type="video/mp4">
       </video>
-      <canvas id="vintage-overlay"></canvas>
+      <div class="chroma-r" id="chroma-r"></div>
+      <div class="chroma-b" id="chroma-b"></div>
       <div class="vignette"></div>
+      <canvas id="vintage-overlay"></canvas>
     </div>
 
     <!-- TIMER DISPLAY -->
@@ -713,15 +728,16 @@
 // ══════════════════════════════════════════════════════
 //  VINTAGE ICE VIDEO
 // ══════════════════════════════════════════════════════
-(function initVintageIce() {
+(function initHyperIce() {
 
-  const video   = document.getElementById('ice-video');
-  const canvas  = document.getElementById('vintage-overlay');
-  const ctx     = canvas.getContext('2d');
+  const video    = document.getElementById('ice-video');
+  const canvas   = document.getElementById('vintage-overlay');
+  const chromaR  = document.getElementById('chroma-r');
+  const chromaB  = document.getElementById('chroma-b');
+  const ctx      = canvas.getContext('2d');
+  let   progress = 0;
 
-  let progress  = 0;
-
-  // ── Resize canvas to match container ─────────────
+  // ── Resize ───────────────────────────────────────
   function resize() {
     canvas.width  = canvas.offsetWidth  || 400;
     canvas.height = canvas.offsetHeight || 300;
@@ -729,158 +745,293 @@
   resize();
   window.addEventListener('resize', resize);
 
-  // ── Vintage state ────────────────────────────────
-  let flickerVal    = 1;
-  let jitterX       = 0;
-  let jitterY       = 0;
-  let cutTimer      = 0;
-  let cutActive     = false;
-  let cutFrames     = 0;
-  let scratchX      = -1;
-  let scratchLife   = 0;
-  let burnActive    = false;
-  let burnAlpha     = 0;
-  let nextCut       = 180 + Math.random() * 300;  // frames until next tape cut
-  let nextScratch   = 60  + Math.random() * 120;
+  // ── Palette ──────────────────────────────────────
+  const CYAN    = [0,   255, 255];
+  const MAGENTA = [255, 0,   255];
+  const PURPLE  = [180, 0,   255];
+  const LIME    = [0,   255, 120];
+  const YELLOW  = [255, 220, 0  ];
+  const NEONS   = [CYAN, MAGENTA, PURPLE, LIME];
 
-  // ── Grain buffer ─────────────────────────────────
-  function drawGrain() {
-    const w = canvas.width, h = canvas.height;
-    const imageData = ctx.createImageData(w, h);
-    const d = imageData.data;
-    for (let i = 0; i < d.length; i += 4) {
-      const v = (Math.random() * 80) | 0;
-      d[i] = d[i+1] = d[i+2] = v;
-      d[i+3] = 28 + (Math.random() * 18) | 0;
-    }
-    ctx.putImageData(imageData, 0, 0);
+  function neon(col, a) {
+    return `rgba(${col[0]},${col[1]},${col[2]},${a})`;
   }
 
-  // ── Scanlines ────────────────────────────────────
+  // ── State ─────────────────────────────────────────
+  let flickerVal   = 1;
+  let jitterX      = 0;
+  let jitterY      = 0;
+  // cuts
+  let cutActive    = false;
+  let cutFrames    = 0;
+  let nextCut      = 200 + Math.random() * 300;
+  // scratch
+  let scratchX     = -1;
+  let scratchLife  = 0;
+  let nextScratch  = 80 + Math.random() * 120;
+  let scratchColor = CYAN;
+  // scan sweep
+  let sweepY       = -60;
+  let sweeping     = false;
+  let nextSweep    = 180 + Math.random() * 300;
+  // glitch blocks
+  let glitchActive = false;
+  let glitchFrames = 0;
+  let glitchLines  = [];
+  let nextGlitch   = 120 + Math.random() * 240;
+  // chroma split
+  let chromaSplit  = 0;
+
+  // ── Colored noise grain ──────────────────────────
+  function drawGrain() {
+    const w = canvas.width, h = canvas.height;
+    const img = ctx.createImageData(w, h);
+    const d   = img.data;
+    for (let i = 0; i < d.length; i += 4) {
+      if (Math.random() < 0.22) {
+        const col = NEONS[Math.floor(Math.random() * NEONS.length)];
+        d[i]   = col[0];
+        d[i+1] = col[1];
+        d[i+2] = col[2];
+        d[i+3] = 8 + (Math.random() * 18) | 0;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+
+  // ── CRT scanlines — neon tinted ─────────────────
   function drawScanlines() {
     const w = canvas.width, h = canvas.height;
-    ctx.fillStyle = 'rgba(0,0,0,0.10)';
-    for (let y = 0; y < h; y += 3) {
+    for (let y = 0; y < h; y += 4) {
+      ctx.fillStyle = y % 8 === 0
+        ? 'rgba(0,255,255,0.03)'
+        : 'rgba(0,0,0,0.13)';
       ctx.fillRect(0, y, w, 1);
     }
   }
 
-  // ── Film scratch ─────────────────────────────────
+  // ── Horizontal glitch bands ──────────────────────
+  function drawGlitchBands() {
+    if (!glitchActive) return;
+    glitchLines.forEach(line => {
+      ctx.fillStyle = neon(line.col, line.a);
+      ctx.fillRect(0, line.y, canvas.width, line.h);
+    });
+    glitchFrames--;
+    if (glitchFrames <= 0) { glitchActive = false; glitchLines = []; }
+  }
+
+  // ── Pixel corruption blocks ──────────────────────
+  function drawCorruption() {
+    if (Math.random() < 0.018) {
+      const col = NEONS[Math.floor(Math.random() * NEONS.length)];
+      const x   = Math.random() * canvas.width;
+      const y   = Math.random() * canvas.height;
+      const bw  = 4  + Math.random() * 30;
+      const bh  = 1  + Math.random() * 6;
+      ctx.fillStyle = neon(col, 0.25 + Math.random() * 0.35);
+      ctx.fillRect(x, y, bw, bh);
+    }
+  }
+
+  // ── Neon scratch line ────────────────────────────
   function drawScratch() {
     if (scratchLife <= 0) return;
-    const w = canvas.width, h = canvas.height;
-    const alpha = Math.min(1, scratchLife / 4) * 0.7;
-    ctx.strokeStyle = `rgba(255,255,220,${alpha})`;
-    ctx.lineWidth = Math.random() < 0.3 ? 2 : 1;
+    const a = Math.min(1, scratchLife / 3) * 0.85;
+    ctx.save();
+    ctx.shadowBlur  = 6;
+    ctx.shadowColor = neon(scratchColor, 1);
+    ctx.strokeStyle = neon(scratchColor, a);
+    ctx.lineWidth   = 1;
     ctx.beginPath();
     ctx.moveTo(scratchX, 0);
-    // wobbly scratch line
-    for (let y = 0; y < h; y += 8) {
-      ctx.lineTo(scratchX + (Math.random() - 0.5) * 2, y);
+    for (let y = 0; y < canvas.height; y += 6) {
+      ctx.lineTo(scratchX + (Math.random() - 0.5) * 2.5, y);
     }
     ctx.stroke();
+    ctx.restore();
     scratchLife--;
   }
 
-  // ── Tape burn / frame edge ─────────────────────────
-  function drawBurn() {
-    if (!burnActive) return;
-    const w = canvas.width, h = canvas.height;
-    const g = ctx.createLinearGradient(0, 0, 0, h * 0.15);
-    g.addColorStop(0,   `rgba(255,220,100,${burnAlpha * 0.9})`);
-    g.addColorStop(0.4, `rgba(200,120,30,${burnAlpha  * 0.5})`);
-    g.addColorStop(1,   'rgba(0,0,0,0)');
+  // ── Scan sweep (horizontal glow band) ───────────
+  function drawSweep() {
+    if (!sweeping) return;
+    const w  = canvas.width;
+    const g  = ctx.createLinearGradient(0, sweepY - 30, 0, sweepY + 30);
+    g.addColorStop(0,    'rgba(0,255,255,0)');
+    g.addColorStop(0.3,  'rgba(0,255,255,0.06)');
+    g.addColorStop(0.5,  'rgba(0,255,255,0.18)');
+    g.addColorStop(0.7,  'rgba(180,0,255,0.10)');
+    g.addColorStop(1,    'rgba(0,0,0,0)');
     ctx.fillStyle = g;
-    ctx.fillRect(0, 0, w, h * 0.15);
-    burnAlpha -= 0.06;
-    if (burnAlpha <= 0) burnActive = false;
+    ctx.fillRect(0, sweepY - 30, w, 60);
+    sweepY += 3.5;
+    if (sweepY > canvas.height + 50) sweeping = false;
   }
 
-  // ── Tape cut flash ──────────────────────────────
+  // ── HUD corner brackets ──────────────────────────
+  function drawHUD() {
+    const w = canvas.width, h = canvas.height;
+    const s = 14, m = 8;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(0,255,255,0.45)';
+    ctx.lineWidth   = 1.2;
+    ctx.shadowBlur  = 4;
+    ctx.shadowColor = 'rgba(0,255,255,0.8)';
+    // corners
+    [[m,m,1,1],[w-m,m,-1,1],[m,h-m,1,-1],[w-m,h-m,-1,-1]].forEach(([x,y,dx,dy]) => {
+      ctx.beginPath();
+      ctx.moveTo(x, y + s*dy); ctx.lineTo(x, y); ctx.lineTo(x + s*dx, y);
+      ctx.stroke();
+    });
+    ctx.restore();
+  }
+
+  // ── Tape cut (digital version) ───────────────────
   function drawCut() {
     if (!cutActive) return;
     const w = canvas.width, h = canvas.height;
-    ctx.fillStyle = cutFrames > 1
-      ? `rgba(255,255,255,${0.85 - cutFrames * 0.25})`
-      : `rgba(0,0,0,0.6)`;
-    ctx.fillRect(0, 0, w, h);
-    cutFrames--;
-    if (cutFrames <= 0) {
-      cutActive = false;
-      // tiny video seek jump for authenticity
+    if (cutFrames === 2) {
+      // Frame 1: bright neon flash
+      const flashCol = NEONS[Math.floor(Math.random() * NEONS.length)];
+      ctx.fillStyle  = neon(flashCol, 0.55);
+      ctx.fillRect(0, 0, w, h);
+    } else if (cutFrames === 1) {
+      // Frame 2: dark dropout
+      ctx.fillStyle = 'rgba(0,0,0,0.75)';
+      ctx.fillRect(0, 0, w, h);
+      // Seek video slightly for jump
       if (video.duration) {
-        const jump = (Math.random() - 0.5) * 1.2;
+        const j = (Math.random() - 0.5) * 1.5;
         video.currentTime = Math.max(0, Math.min(video.duration - 0.1,
-          (video.currentTime || 0) + jump));
+          (video.currentTime || 0) + j));
       }
     }
+    cutFrames--;
+    if (cutFrames <= 0) cutActive = false;
+  }
+
+  // ── Chromatic aberration (CSS transform) ─────────
+  function updateChroma() {
+    // Decay toward 0
+    chromaSplit *= 0.8;
+    if (Math.abs(chromaSplit) < 0.2) chromaSplit = 0;
+    if (chromaSplit > 0) {
+      chromaR.style.opacity   = '0.12';
+      chromaB.style.opacity   = '0.12';
+      chromaR.style.transform = `translateX(${chromaSplit}px)`;
+      chromaB.style.transform = `translateX(${-chromaSplit}px)`;
+      chromaR.style.background = 'rgba(255,0,100,1)';
+      chromaR.style.mixBlendMode = 'color-dodge';
+      chromaB.style.background = 'rgba(0,200,255,1)';
+      chromaB.style.mixBlendMode = 'color-dodge';
+    } else {
+      chromaR.style.opacity = '0';
+      chromaB.style.opacity = '0';
+    }
+  }
+
+  // ── Flicker ──────────────────────────────────────
+  function updateFlicker() {
+    const t = 0.90 + Math.random() * 0.18;
+    flickerVal = flickerVal * 0.88 + t * 0.12;
+    const b  = (0.65 * flickerVal).toFixed(3);
+    const s  = (4 * flickerVal).toFixed(2);
+    const cr = (1.6 + (1-flickerVal)*0.5).toFixed(2);
+    video.style.filter = `hue-rotate(195deg) saturate(${s}) contrast(${cr}) brightness(${b})`;
   }
 
   // ── Jitter ───────────────────────────────────────
   function updateJitter() {
-    // Drift toward zero
-    jitterX *= 0.7;
-    jitterY *= 0.7;
+    jitterX *= 0.72; jitterY *= 0.72;
     if (Math.abs(jitterX) < 0.1) jitterX = 0;
     if (Math.abs(jitterY) < 0.1) jitterY = 0;
     video.style.transform = `translate(${jitterX}px,${jitterY}px)`;
   }
 
-  // ── Flicker ──────────────────────────────────────
-  function updateFlicker() {
-    const target = 0.92 + Math.random() * 0.16;
-    flickerVal = flickerVal * 0.85 + target * 0.15;
-    // Bake flicker into the video CSS filter brightness
-    const b = (0.62 * flickerVal).toFixed(3);
-    video.style.filter = `brightness(${b}) contrast(1.25) saturate(0.45) sepia(0.18)`;
-  }
-
   // ── Main loop ─────────────────────────────────────
-  let frame = 0;
   function animate() {
     requestAnimationFrame(animate);
-    frame++;
+    const w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Decide tape cut
+    // Trigger tape cut
     if (!cutActive) {
       nextCut--;
       if (nextCut <= 0) {
-        cutActive  = true;
-        cutFrames  = 2 + (Math.random() < 0.3 ? 1 : 0);
-        nextCut    = 200 + Math.random() * 400;
-        // jitter on cut
-        jitterX    = (Math.random() - 0.5) * 8;
-        jitterY    = (Math.random() - 0.5) * 4;
-        // film burn sometimes
-        if (Math.random() < 0.45) { burnActive = true; burnAlpha = 0.7; }
+        cutActive   = true;
+        cutFrames   = 2;
+        nextCut     = 250 + Math.random() * 350;
+        jitterX     = (Math.random() - 0.5) * 10;
+        jitterY     = (Math.random() - 0.5) * 5;
+        chromaSplit = 4 + Math.random() * 8;
+        // Also spawn glitch lines on cut
+        glitchActive = true;
+        glitchFrames = 4 + Math.floor(Math.random() * 6);
+        glitchLines  = Array.from({length: 3+Math.floor(Math.random()*4)}, () => ({
+          y: Math.random() * h,
+          h: 1 + Math.random() * 5,
+          col: NEONS[Math.floor(Math.random() * NEONS.length)],
+          a: 0.3 + Math.random() * 0.35
+        }));
       }
     }
 
-    // Decide scratch
+    // Trigger scratch
     if (scratchLife <= 0) {
       nextScratch--;
       if (nextScratch <= 0) {
-        scratchX    = 20 + Math.random() * (canvas.width - 40);
-        scratchLife = 3 + Math.floor(Math.random() * 8);
-        nextScratch = 90 + Math.random() * 180;
+        scratchX     = 20 + Math.random() * (w - 40);
+        scratchLife  = 4 + Math.floor(Math.random() * 10);
+        scratchColor = NEONS[Math.floor(Math.random() * NEONS.length)];
+        nextScratch  = 100 + Math.random() * 200;
       }
     }
 
-    updateFlicker();
-    updateJitter();
+    // Trigger glitch blocks (independent)
+    if (!glitchActive) {
+      nextGlitch--;
+      if (nextGlitch <= 0) {
+        glitchActive = true;
+        glitchFrames = 2 + Math.floor(Math.random() * 4);
+        glitchLines  = Array.from({length: 2+Math.floor(Math.random()*5)}, () => ({
+          y: Math.random() * h,
+          h: 1 + Math.random() * 4,
+          col: NEONS[Math.floor(Math.random() * NEONS.length)],
+          a: 0.2 + Math.random() * 0.3
+        }));
+        nextGlitch = 80 + Math.random() * 200;
+      }
+    }
 
+    // Trigger sweep
+    if (!sweeping) {
+      nextSweep--;
+      if (nextSweep <= 0) {
+        sweeping  = true;
+        sweepY    = -60;
+        nextSweep = 250 + Math.random() * 400;
+      }
+    }
+
+    // Draw layers
     drawGrain();
     drawScanlines();
+    drawGlitchBands();
+    drawCorruption();
+    drawSweep();
     drawScratch();
-    drawBurn();
+    drawHUD();
     drawCut();
+
+    // Update reactive elements
+    updateFlicker();
+    updateJitter();
+    updateChroma();
   }
 
   animate();
 
-  // ── Public API (keep same interface as Three.js version) ──
   window.iceScene = {
     setProgress(p) { progress = Math.max(0, Math.min(1, p)); },
     reset()        { progress = 0; }

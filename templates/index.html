@@ -719,6 +719,15 @@
       pointer-events: none;
     }
 
+    .controls {
+      transition: opacity 0.9s ease;
+    }
+
+    body.in-session.idle .controls {
+      opacity: 0;
+      pointer-events: none;
+    }
+
     /* ── TIME DRUM PICKER ────────────────────────────────────── */
     .drum-wrap {
       position: relative;

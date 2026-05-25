@@ -2186,6 +2186,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   initAutoHide();
   initDrum();
 
+  // Session mode: timer drifts to top-left, everything melts away
+  document.addEventListener('sitbell:start', () => document.body.classList.add('in-session'));
+  document.addEventListener('sitbell:stop',  () => document.body.classList.remove('in-session'));
+
   // register service worker
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/static/sw.js').catch(() => {});
@@ -2376,10 +2380,6 @@ function initDrum() {
   const origStart = window._onTimerStart || null;
   document.addEventListener('sitbell:start', () => wrapEl.classList.add('hidden'));
   document.addEventListener('sitbell:stop',  () => wrapEl.classList.remove('hidden'));
-
-  // Session mode: drift timer to top-left, everything else melts away
-  document.addEventListener('sitbell:start', () => document.body.classList.add('in-session'));
-  document.addEventListener('sitbell:stop',  () => document.body.classList.remove('in-session'));
 
   render(false);
 }

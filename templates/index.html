@@ -1226,14 +1226,14 @@
 // ══════════════════════════════════════════════════════
 (function initHyperIce() {
 
-  const video    = document.getElementById('ice-video');
-  const canvas   = document.getElementById('vintage-overlay');
-  const chromaR  = document.getElementById('chroma-r');
-  const chromaB  = document.getElementById('chroma-b');
-  const ctx      = canvas.getContext('2d');
+  const video   = document.getElementById('ice-video');
+  const canvas  = document.getElementById('vintage-overlay');
+  const chromaR = document.getElementById('chroma-r');
+  const chromaB = document.getElementById('chroma-b');
+  const ctx     = canvas.getContext('2d');
   let   progress = 0;
 
-  // ── Resize ───────────────────────────────────────
+  // ── Resize ───────────────────────────────────────────────
   function resize() {
     canvas.width  = canvas.offsetWidth  || 400;
     canvas.height = canvas.offsetHeight || 300;
@@ -1241,99 +1241,125 @@
   resize();
   window.addEventListener('resize', resize);
 
-  // ── Palette ──────────────────────────────────────
+  // ── Palette ──────────────────────────────────────────────
   const CYAN    = [0,   255, 255];
   const MAGENTA = [255, 0,   255];
   const PURPLE  = [180, 0,   255];
   const LIME    = [0,   255, 120];
-  const YELLOW  = [255, 220, 0  ];
   const NEONS   = [CYAN, MAGENTA, PURPLE, LIME];
-
   function neon(col, a) {
-    return `rgba(${col[0]},${col[1]},${col[2]},${a})`;
+    return `rgba(${col[0]},${col[1]},${col[2]},${Math.max(0, a).toFixed(3)})`;
   }
 
-  // ── State ─────────────────────────────────────────
-  let flickerVal   = 1;
-  let jitterX      = 0;
-  let jitterY      = 0;
-  // cuts
-  let cutActive    = false;
-  let cutFrames    = 0;
-  let nextCut      = 200 + Math.random() * 300;
-  // scratch
-  let scratchX     = -1;
-  let scratchLife  = 0;
-  let nextScratch  = 80 + Math.random() * 120;
-  let scratchColor = CYAN;
-  // scan sweep
-  let sweepY       = -60;
-  let sweeping     = false;
-  let nextSweep    = 180 + Math.random() * 300;
-  // glitch blocks
-  let glitchActive = false;
-  let glitchFrames = 0;
-  let glitchLines  = [];
-  let nextGlitch   = 120 + Math.random() * 240;
-  // chroma split
-  let chromaSplit  = 0;
+  // ── Speed wave — always running, organic ─────────────────
+  // Three overlapping sines at incommensurate periods.
+  // Primary drives the ~3-5 min slow/fast breathing cycle.
+  // Secondary adds texture. Tertiary adds long slow drift.
+  let waveFrame = 0;
+  const WAVES = [
+    { p: 60*60*(3.8 + Math.random()*1.4), ph: Math.random()*Math.PI*2, w: 0.60 },
+    { p: 60*60*(1.3 + Math.random()*0.7), ph: Math.random()*Math.PI*2, w: 0.28 },
+    { p: 60*60*(9.0 + Math.random()*4.0), ph: Math.random()*Math.PI*2, w: 0.12 },
+  ];
+  const SPEED_MIN = 0.13; // sand never fully stops
 
-  // ── Colored noise grain ──────────────────────────
-  function drawGrain() {
+  function getSpeedMult() {
+    let v = 0;
+    for (const wv of WAVES) v += Math.sin(waveFrame / wv.p * Math.PI*2 + wv.ph) * wv.w;
+    // weighted sum range ≈ -1..1 → normalize to 0..1
+    const norm = (v + 1) / 2;
+    return SPEED_MIN + norm * (1 - SPEED_MIN);
+  }
+
+  // ── Glitch fade — session progress drives glitches to near-zero
+  // Scan sweeps are EXEMPT and stay at full strength always.
+  function getGlitchFade() {
+    return Math.max(0.04, 1.0 - progress * 0.96);
+  }
+
+  // ── State ────────────────────────────────────────────────
+  let flickerVal  = 1;
+  let jitterX     = 0;
+  let jitterY     = 0;
+  // fractional counters so sub-1 speeds still accumulate
+  let nextCut     = 200 + Math.random() * 300;
+  let cutActive   = false;
+  let cutFrames   = 0;
+  let nextScratch = 80  + Math.random() * 120;
+  let scratchX    = -1;
+  let scratchLife = 0;
+  let scratchColor= CYAN;
+  let sweepY      = -60;
+  let sweeping    = false;
+  let nextSweep   = 180 + Math.random() * 300;
+  let nextGlitch  = 120 + Math.random() * 240;
+  let glitchActive= false;
+  let glitchFrames= 0;
+  let glitchLines = [];
+  let chromaSplit = 0;
+
+  // ── Grain / kinetic sand ─────────────────────────────────
+  // Density and alpha scaled by speed wave + glitch fade.
+  // Minimum floor so sand is always visible at session end.
+  function drawGrain(spd, gf) {
     const w = canvas.width, h = canvas.height;
     const img = ctx.createImageData(w, h);
     const d   = img.data;
+    const gfFloor  = Math.max(0.15, gf);           // sand floor — never invisible
+    const density  = 0.11 * (0.25 + 0.75 * spd) * gfFloor;
+    const maxAlpha = (4 + 9 * Math.random()) * gfFloor;
     for (let i = 0; i < d.length; i += 4) {
-      if (Math.random() < 0.22) {
+      if (Math.random() < density) {
         const col = NEONS[Math.floor(Math.random() * NEONS.length)];
         d[i]   = col[0];
         d[i+1] = col[1];
         d[i+2] = col[2];
-        d[i+3] = 8 + (Math.random() * 18) | 0;
+        d[i+3] = (maxAlpha * Math.random()) | 0;
       }
     }
     ctx.putImageData(img, 0, 0);
   }
 
-  // ── CRT scanlines — neon tinted ─────────────────
-  function drawScanlines() {
+  // ── CRT scanlines ────────────────────────────────────────
+  function drawScanlines(gf) {
     const w = canvas.width, h = canvas.height;
     for (let y = 0; y < h; y += 4) {
       ctx.fillStyle = y % 8 === 0
-        ? 'rgba(0,255,255,0.03)'
-        : 'rgba(0,0,0,0.13)';
+        ? `rgba(0,255,255,${(0.015 * gf).toFixed(4)})`
+        : `rgba(0,0,0,${(0.065 * gf).toFixed(4)})`;
       ctx.fillRect(0, y, w, 1);
     }
   }
 
-  // ── Horizontal glitch bands ──────────────────────
-  function drawGlitchBands() {
+  // ── Glitch bands ─────────────────────────────────────────
+  function drawGlitchBands(gf) {
     if (!glitchActive) return;
     glitchLines.forEach(line => {
-      ctx.fillStyle = neon(line.col, line.a);
+      ctx.fillStyle = neon(line.col, line.a * gf);
       ctx.fillRect(0, line.y, canvas.width, line.h);
     });
     glitchFrames--;
     if (glitchFrames <= 0) { glitchActive = false; glitchLines = []; }
   }
 
-  // ── Pixel corruption blocks ──────────────────────
-  function drawCorruption() {
-    if (Math.random() < 0.018) {
+  // ── Pixel corruption ─────────────────────────────────────
+  function drawCorruption(spd, gf) {
+    if (Math.random() < 0.009 * spd * gf) {
       const col = NEONS[Math.floor(Math.random() * NEONS.length)];
-      const x   = Math.random() * canvas.width;
-      const y   = Math.random() * canvas.height;
-      const bw  = 4  + Math.random() * 30;
-      const bh  = 1  + Math.random() * 6;
-      ctx.fillStyle = neon(col, 0.25 + Math.random() * 0.35);
-      ctx.fillRect(x, y, bw, bh);
+      ctx.fillStyle = neon(col, (0.12 + Math.random() * 0.16) * gf);
+      ctx.fillRect(
+        Math.random() * canvas.width,
+        Math.random() * canvas.height,
+        4 + Math.random() * 30,
+        1 + Math.random() * 6
+      );
     }
   }
 
-  // ── Neon scratch line ────────────────────────────
-  function drawScratch() {
+  // ── Neon scratch ─────────────────────────────────────────
+  function drawScratch(gf) {
     if (scratchLife <= 0) return;
-    const a = Math.min(1, scratchLife / 3) * 0.85;
+    const a = Math.min(1, scratchLife / 3) * 0.42 * gf;
     ctx.save();
     ctx.shadowBlur  = 6;
     ctx.shadowColor = neon(scratchColor, 1);
@@ -1349,32 +1375,33 @@
     scratchLife--;
   }
 
-  // ── Scan sweep (horizontal glow band) ───────────
-  function drawSweep() {
+  // ── Scan sweep — FULL STRENGTH, EXEMPT FROM GLITCH FADE ──
+  // Always present. Represents body-scanning in Vipassana.
+  function drawSweep(spd) {
     if (!sweeping) return;
-    const w  = canvas.width;
-    const g  = ctx.createLinearGradient(0, sweepY - 30, 0, sweepY + 30);
-    g.addColorStop(0,    'rgba(0,255,255,0)');
-    g.addColorStop(0.3,  'rgba(0,255,255,0.06)');
-    g.addColorStop(0.5,  'rgba(0,255,255,0.18)');
-    g.addColorStop(0.7,  'rgba(180,0,255,0.10)');
-    g.addColorStop(1,    'rgba(0,0,0,0)');
+    const w = canvas.width;
+    const g = ctx.createLinearGradient(0, sweepY - 30, 0, sweepY + 30);
+    g.addColorStop(0,   'rgba(0,255,255,0)');
+    g.addColorStop(0.3, 'rgba(0,255,255,0.06)');
+    g.addColorStop(0.5, 'rgba(0,255,255,0.18)');
+    g.addColorStop(0.7, 'rgba(180,0,255,0.10)');
+    g.addColorStop(1,   'rgba(0,0,0,0)');
     ctx.fillStyle = g;
     ctx.fillRect(0, sweepY - 30, w, 60);
-    sweepY += 3.5;
+    sweepY += 3.5 * (0.3 + 0.7 * spd);   // speed follows wave
     if (sweepY > canvas.height + 50) sweeping = false;
   }
 
-  // ── HUD corner brackets ──────────────────────────
-  function drawHUD() {
+  // ── HUD corner brackets ──────────────────────────────────
+  function drawHUD(gf) {
+    if (gf < 0.08) return;
     const w = canvas.width, h = canvas.height;
     const s = 14, m = 8;
     ctx.save();
-    ctx.strokeStyle = 'rgba(0,255,255,0.45)';
+    ctx.strokeStyle = `rgba(0,255,255,${(0.45 * gf).toFixed(3)})`;
     ctx.lineWidth   = 1.2;
     ctx.shadowBlur  = 4;
-    ctx.shadowColor = 'rgba(0,255,255,0.8)';
-    // corners
+    ctx.shadowColor = `rgba(0,255,255,${(0.8 * gf).toFixed(3)})`;
     [[m,m,1,1],[w-m,m,-1,1],[m,h-m,1,-1],[w-m,h-m,-1,-1]].forEach(([x,y,dx,dy]) => {
       ctx.beginPath();
       ctx.moveTo(x, y + s*dy); ctx.lineTo(x, y); ctx.lineTo(x + s*dx, y);
@@ -1383,20 +1410,17 @@
     ctx.restore();
   }
 
-  // ── Tape cut (digital version) ───────────────────
-  function drawCut() {
+  // ── Tape cut ─────────────────────────────────────────────
+  function drawCut(gf) {
     if (!cutActive) return;
     const w = canvas.width, h = canvas.height;
     if (cutFrames === 2) {
-      // Frame 1: bright neon flash
       const flashCol = NEONS[Math.floor(Math.random() * NEONS.length)];
-      ctx.fillStyle  = neon(flashCol, 0.55);
+      ctx.fillStyle  = neon(flashCol, 0.27 * gf);
       ctx.fillRect(0, 0, w, h);
     } else if (cutFrames === 1) {
-      // Frame 2: dark dropout
-      ctx.fillStyle = 'rgba(0,0,0,0.75)';
+      ctx.fillStyle  = `rgba(0,0,0,${(0.37 * gf).toFixed(3)})`;
       ctx.fillRect(0, 0, w, h);
-      // Seek video slightly for jump
       if (video.duration) {
         const j = (Math.random() - 0.5) * 1.5;
         video.currentTime = Math.max(0, Math.min(video.duration - 0.1,
@@ -1407,75 +1431,78 @@
     if (cutFrames <= 0) cutActive = false;
   }
 
-  // ── Chromatic aberration (CSS transform) ─────────
-  function updateChroma() {
-    // Decay toward 0
+  // ── Chromatic aberration ──────────────────────────────────
+  function updateChroma(gf) {
     chromaSplit *= 0.8;
     if (Math.abs(chromaSplit) < 0.2) chromaSplit = 0;
     if (chromaSplit > 0) {
-      chromaR.style.opacity   = '0.12';
-      chromaB.style.opacity   = '0.12';
-      chromaR.style.transform = `translateX(${chromaSplit}px)`;
-      chromaB.style.transform = `translateX(${-chromaSplit}px)`;
-      chromaR.style.background = 'rgba(255,0,100,1)';
-      chromaR.style.mixBlendMode = 'color-dodge';
-      chromaB.style.background = 'rgba(0,200,255,1)';
-      chromaB.style.mixBlendMode = 'color-dodge';
+      const op = (0.06 * gf).toFixed(3);
+      chromaR.style.opacity    = op;
+      chromaB.style.opacity    = op;
+      chromaR.style.transform  = `translateX(${chromaSplit}px)`;
+      chromaB.style.transform  = `translateX(${-chromaSplit}px)`;
+      chromaR.style.background    = 'rgba(255,0,100,1)';
+      chromaR.style.mixBlendMode  = 'color-dodge';
+      chromaB.style.background    = 'rgba(0,200,255,1)';
+      chromaB.style.mixBlendMode  = 'color-dodge';
     } else {
       chromaR.style.opacity = '0';
       chromaB.style.opacity = '0';
     }
   }
 
-  // ── Flicker ──────────────────────────────────────
+  // ── Flicker ───────────────────────────────────────────────
   function updateFlicker() {
     const t = 0.90 + Math.random() * 0.18;
     flickerVal = flickerVal * 0.88 + t * 0.12;
     const b  = (0.65 * flickerVal).toFixed(3);
-    const s  = (4 * flickerVal).toFixed(2);
-    const cr = (1.6 + (1-flickerVal)*0.5).toFixed(2);
+    const s  = (4   * flickerVal).toFixed(2);
+    const cr = (1.6 + (1 - flickerVal) * 0.5).toFixed(2);
     video.style.filter = `hue-rotate(195deg) saturate(${s}) contrast(${cr}) brightness(${b})`;
   }
 
-  // ── Jitter ───────────────────────────────────────
-  function updateJitter() {
+  // ── Jitter ────────────────────────────────────────────────
+  function updateJitter(gf) {
     jitterX *= 0.72; jitterY *= 0.72;
     if (Math.abs(jitterX) < 0.1) jitterX = 0;
     if (Math.abs(jitterY) < 0.1) jitterY = 0;
-    video.style.transform = `translate(${jitterX}px,${jitterY}px)`;
+    video.style.transform = `translate(${jitterX * gf}px,${jitterY * gf}px)`;
   }
 
-  // ── Main loop ─────────────────────────────────────
+  // ── Main loop ─────────────────────────────────────────────
   function animate() {
     requestAnimationFrame(animate);
-    const w = canvas.width, h = canvas.height;
+    waveFrame++;
+
+    const spd = getSpeedMult();
+    const gf  = getGlitchFade();
+    const w   = canvas.width, h = canvas.height;
     ctx.clearRect(0, 0, w, h);
 
-    // Trigger tape cut
+    // Tape cut — speed + glitch scaled
     if (!cutActive) {
-      nextCut--;
+      nextCut -= spd * gf;
       if (nextCut <= 0) {
-        cutActive   = true;
-        cutFrames   = 2;
-        nextCut     = 250 + Math.random() * 350;
-        jitterX     = (Math.random() - 0.5) * 10;
-        jitterY     = (Math.random() - 0.5) * 5;
-        chromaSplit = 4 + Math.random() * 8;
-        // Also spawn glitch lines on cut
+        cutActive    = true;
+        cutFrames    = 2;
+        nextCut      = 250 + Math.random() * 350;
+        jitterX      = (Math.random() - 0.5) * 10;
+        jitterY      = (Math.random() - 0.5) * 5;
+        chromaSplit  = (2 + Math.random() * 4) * gf;
         glitchActive = true;
         glitchFrames = 4 + Math.floor(Math.random() * 6);
-        glitchLines  = Array.from({length: 3+Math.floor(Math.random()*4)}, () => ({
+        glitchLines  = Array.from({length: 3 + Math.floor(Math.random()*4)}, () => ({
           y: Math.random() * h,
           h: 1 + Math.random() * 5,
           col: NEONS[Math.floor(Math.random() * NEONS.length)],
-          a: 0.3 + Math.random() * 0.35
+          a: 0.15 + Math.random() * 0.17
         }));
       }
     }
 
-    // Trigger scratch
+    // Scratch — speed + glitch scaled
     if (scratchLife <= 0) {
-      nextScratch--;
+      nextScratch -= spd * gf;
       if (nextScratch <= 0) {
         scratchX     = 20 + Math.random() * (w - 40);
         scratchLife  = 4 + Math.floor(Math.random() * 10);
@@ -1484,25 +1511,25 @@
       }
     }
 
-    // Trigger glitch blocks (independent)
+    // Independent glitch blocks — speed + glitch scaled
     if (!glitchActive) {
-      nextGlitch--;
+      nextGlitch -= spd * gf;
       if (nextGlitch <= 0) {
         glitchActive = true;
         glitchFrames = 2 + Math.floor(Math.random() * 4);
-        glitchLines  = Array.from({length: 2+Math.floor(Math.random()*5)}, () => ({
+        glitchLines  = Array.from({length: 2 + Math.floor(Math.random()*5)}, () => ({
           y: Math.random() * h,
           h: 1 + Math.random() * 4,
           col: NEONS[Math.floor(Math.random() * NEONS.length)],
-          a: 0.2 + Math.random() * 0.3
+          a: 0.10 + Math.random() * 0.14
         }));
         nextGlitch = 80 + Math.random() * 200;
       }
     }
 
-    // Trigger sweep
+    // Sweep — speed scaled only, NOT glitch faded
     if (!sweeping) {
-      nextSweep--;
+      nextSweep -= spd;
       if (nextSweep <= 0) {
         sweeping  = true;
         sweepY    = -60;
@@ -1510,20 +1537,18 @@
       }
     }
 
-    // Draw layers
-    drawGrain();
-    drawScanlines();
-    drawGlitchBands();
-    drawCorruption();
-    drawSweep();
-    drawScratch();
-    drawHUD();
-    drawCut();
+    drawGrain(spd, gf);
+    drawScanlines(gf);
+    drawGlitchBands(gf);
+    drawCorruption(spd, gf);
+    drawSweep(spd);
+    drawScratch(gf);
+    drawHUD(gf);
+    drawCut(gf);
 
-    // Update reactive elements
     updateFlicker();
-    updateJitter();
-    updateChroma();
+    updateJitter(gf);
+    updateChroma(gf);
   }
 
   animate();
